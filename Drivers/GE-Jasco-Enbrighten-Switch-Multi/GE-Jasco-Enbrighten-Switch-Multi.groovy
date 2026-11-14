@@ -17,6 +17,9 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  1.0.2 (2026-11-14) - Live Config-Get verification vs Alliance/manuals: expose param 39 (Relay
+ *                       Control) on 700S/800S switches; clarify param 5 3-Way labels (Add-On vs
+ *                       Standard); LED intensity prefs limited to documented 1-7 range.
  *  1.0.1 (2026-11-14) - Persist detected profile to device Data Values (profileKey, profileName,
  *                       profileGeneration, profileSource, profileColorLed, profileThreeWay) so the
  *                       model ID is visible on the device page without overwriting user Notes.
@@ -60,10 +63,10 @@ import groovy.transform.Field
 
 // Profiles keyed by "<productType>-<productId>" (4 hex digits each, lowercase, no 0x prefix).
 // params : configuration parameter numbers this model supports (only these are written / read)
-// relayControl : reserved for models that expose a relay-control parameter (param 39); none of the
-//                models below are known to, so no parameter 39 traffic is generated.
+// relayControl : models that expose param 39 (paddle controls relay vs smart-bulb / always-on power).
 @Field static Map DEVICE_PROFILES = [
     // ---- 500S classic (no color LED, no 3-way add-on parameter) ----
+    // Live Config-Get on ZW4008 confirmed param 4 (invert) even though some Alliance pages omit it.
     "4952-3135": [name: "Enbrighten ZW4008 / 46201",   generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
    ,"4952-3136": [name: "Jasco ZW4008 / 46562",        generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
    ,"4952-3237": [name: "UltraPro ZW4008 / 39348",     generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
@@ -71,20 +74,20 @@ import groovy.transform.Field
    ,"4952-3138": [name: "Jasco ZW4009 / 46563",        generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
    ,"4952-3238": [name: "UltraPro ZW4009 / 39354",     generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
     // ---- 700S color LED ----
-   ,"4952-3239": [name: "Enbrighten ZWA4011 / 58433",    generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3331": [name: "Enbrighten ZWA4011DV / 59337",  generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3335": [name: "Jasco ZWA4011 / 59381",         generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3333": [name: "UltraPro ZWA4011 / 59347",      generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3330": [name: "Enbrighten ZWA4012 / 58436",    generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3332": [name: "Enbrighten ZWA4012DV / 59338",  generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3336": [name: "Jasco ZWA4012 / 59382",         generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3334": [name: "UltraPro ZWA4012 / 59368",      generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
+   ,"4952-3239": [name: "Enbrighten ZWA4011 / 58433",    generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3331": [name: "Enbrighten ZWA4011DV / 59337",  generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3335": [name: "Jasco ZWA4011 / 59381",         generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3333": [name: "UltraPro ZWA4011 / 59347",      generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3330": [name: "Enbrighten ZWA4012 / 58436",    generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3332": [name: "Enbrighten ZWA4012DV / 59338",  generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3336": [name: "Jasco ZWA4012 / 59382",         generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3334": [name: "UltraPro ZWA4012 / 59368",      generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
     // ---- 800S color LED ----
-   ,"4952-3435": [name: "Enbrighten ZWN4015 / 76591",    generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3437": [name: "Jasco ZWN4015 / 76596",         generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3438": [name: "Enbrighten ZWN4016 / 76592",    generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3530": [name: "Jasco ZWN4016 / 76598",         generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3534": [name: "UltraPro ZWN4017 / 76601",      generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
+   ,"4952-3435": [name: "Enbrighten ZWN4015 / 76591",    generation: "800S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3437": [name: "Jasco ZWN4015 / 76596",         generation: "800S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3438": [name: "Enbrighten ZWN4016 / 76592",    generation: "800S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3530": [name: "Jasco ZWN4016 / 76598",         generation: "800S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3534": [name: "UltraPro ZWN4017 / 76601",      generation: "800S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
 ]
 
 // Used when the model is not recognised: core parameters only, no color LED writes.
@@ -99,6 +102,7 @@ import groovy.transform.Field
     ,[num: 34, setting: "paramLEDColor",           dflt: 5]   // F7 Blue
     ,[num: 35, setting: "paramIntensity",          dflt: 4]   // F7
     ,[num: 36, setting: "paramGuidelightIntensity",dflt: 4]   // F7
+    ,[num: 39, setting: "paramRelayControl",       dflt: 0]   // smart-bulb / always-on power
 ]
 
 @Field static Map LED_COLORS = ["Red": 1, "Orange": 2, "Yellow": 3, "Green": 4, "Blue": 5, "Pink": 6, "Purple": 7, "White": 8]
@@ -144,16 +148,17 @@ metadata {
 	}
 
  preferences {
-        input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: "All settings are listed for every model. Settings your switch does not support (for example color LED options on non-color models, or the 3-way add-on option on 500S models) are ignored and never written to the device. The detected model is stored in device Data Values (profileKey, profileName, profileGeneration) and in state."
+        input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: "All settings are listed for every model. Settings your switch does not support (for example color LED, 3-way type, or relay control on 500S models) are ignored and never written to the device. The detected model is stored in device Data Values (profileKey, profileName, profileGeneration) and in state."
         input name: "forceProfile", type: "enum", title: "Device Profile Override", multiple: false, options: ["auto" : "Auto-detect (default)", "4952-3135" : "4952-3135 Enbrighten ZW4008 / 46201 [500S]", "4952-3136" : "4952-3136 Jasco ZW4008 / 46562 [500S]", "4952-3237" : "4952-3237 UltraPro ZW4008 / 39348 [500S]", "4952-3137" : "4952-3137 Enbrighten ZW4009 / 46202 [500S]", "4952-3138" : "4952-3138 Jasco ZW4009 / 46563 [500S]", "4952-3238" : "4952-3238 UltraPro ZW4009 / 39354 [500S]", "4952-3239" : "4952-3239 Enbrighten ZWA4011 / 58433 [700S]", "4952-3331" : "4952-3331 Enbrighten ZWA4011DV / 59337 [700S]", "4952-3335" : "4952-3335 Jasco ZWA4011 / 59381 [700S]", "4952-3333" : "4952-3333 UltraPro ZWA4011 / 59347 [700S]", "4952-3330" : "4952-3330 Enbrighten ZWA4012 / 58436 [700S]", "4952-3332" : "4952-3332 Enbrighten ZWA4012DV / 59338 [700S]", "4952-3336" : "4952-3336 Jasco ZWA4012 / 59382 [700S]", "4952-3334" : "4952-3334 UltraPro ZWA4012 / 59368 [700S]", "4952-3435" : "4952-3435 Enbrighten ZWN4015 / 76591 [800S]", "4952-3437" : "4952-3437 Jasco ZWN4015 / 76596 [800S]", "4952-3438" : "4952-3438 Enbrighten ZWN4016 / 76592 [800S]", "4952-3530" : "4952-3530 Jasco ZWN4016 / 76598 [800S]", "4952-3534" : "4952-3534 UltraPro ZWN4017 / 76601 [800S]"], required: false, displayDuringSetup: true, defaultValue: "auto"
         input name: "paramLED", type: "enum", title: "(3) LED Indicator Behavior", multiple: false, options: ["0" : "LED ON When Switch OFF (default)", "1" : "LED ON When Switch ON", "2" : "LED Always OFF", "3" : "LED Always ON"], required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "paramInverted", type: "enum", title: "(4) Switch Buttons Direction", multiple: false, options: ["0" : "Normal (default)", "1" : "Inverted"], required: false, displayDuringSetup: true, defaultValue: "0"
-		input name: "paramThreeWayType", type: "enum", title: "(5) 3-Way Add-On Switch [700S/800S only]", multiple: false, options: ["0" : "Off (default)", "1" : "On"], required: false, displayDuringSetup: true, defaultValue: "0"
-        input name: "paramAlternateExclusion", type: "enum", title: "(19) Enable alternate exclusion (2-ON, 2-OFF)", multiple: false, options: ["0" : "OFF (default)", "1" : "ON"], required: false, displayDuringSetup: true, defaultValue: "0"
+        input name: "paramThreeWayType", type: "enum", title: "(5) 3-Way Type [700S/800S only]", multiple: false, options: ["0" : "Add-On Switch (default)", "1" : "Standard 3-Way Switch"], required: false, displayDuringSetup: true, defaultValue: "0"
+        input name: "paramAlternateExclusion", type: "enum", title: "(19) Alternate Exclusion", multiple: false, options: ["0" : "Single paddle press (default)", "1" : "Alternate exclusion sequence / menu"], required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "paramLEDColor", type: "enum", title: "(34) LED Light Color [color LED models only]", multiple: false, options: ["1" : "Red", "2" : "Orange", "3" : "Yellow", "4" : "Green", "5" : "Blue (default)", "6" : "Pink", "7" : "Purple", "8" : "White"], required: false, displayDuringSetup: true, defaultValue: "5"
-        input name: "paramIntensity", type: "enum", title: "(35) LED Intensity [color LED models only]", multiple: false, options: ["0" : "0 - Off","1" : "1", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7"], required: false, displayDuringSetup: true, defaultValue: "4"
+        input name: "paramIntensity", type: "enum", title: "(35) LED Intensity [color LED models only]", multiple: false, options: ["1" : "1 (lowest)", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7 (highest)"], required: false, displayDuringSetup: true, defaultValue: "4"
         // FIX 2026-11-12 F2: typo Intesity -> Intensity
-        input name: "paramGuidelightIntensity", type: "enum", title: "(36) Guidelight Intensity [color LED models only]", multiple: false, options: ["0" : "0 - Off","1" : "1", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7"], required: false, displayDuringSetup: true, defaultValue: "4"
+        input name: "paramGuidelightIntensity", type: "enum", title: "(36) Guidelight Intensity [color LED models only]", multiple: false, options: ["1" : "1 (lowest)", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7 (highest)"], required: false, displayDuringSetup: true, defaultValue: "4"
+        input name: "paramRelayControl", type: "enum", title: "(39) Relay Control [700S/800S only]", multiple: false, options: ["0" : "Paddle controls relay (default)", "1" : "Smart bulb mode — relay always off, power always on"], required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "requestedGroup2", type: "text", title: "Association Group 2 Members (Max of 5):", required: false
         input name: "requestedGroup3", type: "text", title: "Association Group 3 Members (Max of 4):", required: false
         input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false
