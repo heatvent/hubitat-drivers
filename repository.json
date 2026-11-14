@@ -12,6 +12,17 @@
       ],
       "location": "https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/packageManifest.json",
       "description": "Profile-driven GE/Jasco/UltraPro Enbrighten Z-Wave Plus Switch and Dimmer drivers covering 500S, 700S, and 800S models with auto-detect."
+    },
+    {
+      "id": "d477be3e-0f05-4ea8-840b-6891464671ed",
+      "name": "Zooz ZSE50 Siren & Chime",
+      "category": "Security",
+      "tags": [
+        "Safety & Security",
+        "Tools & Utilities"
+      ],
+      "location": "https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/packageManifest/zooz-zse50-siren-chime.json",
+      "description": "Full-parameter Zooz ZSE50 Siren & Chime driver (Sound Switch, Alarm/Chime, LED, config params 1-16)."
     }
   ]
 }

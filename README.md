@@ -133,3 +133,23 @@ Param **84** (Z-Wave factory reset) on **700S/800S** is exposed only via the `fa
 - Changing preferences and saving runs `updated()`, which writes **only** the active profile’s parameters.
 - Smart bulb mode (param **39** = 1) leaves power on with the relay off — intended for smart bulbs; do not enable casually.
 - For a narrower 700S-only upstream option, see the Botched1 PR for `GE Enbrighten 700S` drivers.
+
+---
+
+## Zooz ZSE50 Siren & Chime
+
+Import: `https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/Drivers/Zooz-ZSE50-Siren-Chime/Zooz-ZSE50-Siren-Chime.groovy`
+
+HPM package name: **Zooz ZSE50 Siren & Chime** (same custom repository URL as above).
+
+Hubitat includes a built-in ZSE50 driver (platform 2.4.3+). This Heatvent driver adds the full Zooz configuration parameter set (1–16), association group 2, LED color helpers, and Chime/`playSound` for Rule Machine.
+
+| Command | Behavior |
+|---------|----------|
+| `siren` / `on` / `playSound(n)` | Play tone (default = param 4) |
+| `strobe` | LED-only mode (param 1 = 4) then start playback |
+| `both` | Normal playback with LED |
+| `off` / `stop` | Stop tone |
+| `setVolume` / `setLedColor` / `setDefaultTone` | Write params 5 / 7 / 4 |
+
+Stock tones 1–25 are labeled in attributes; custom uploads use numbers 26–50.
