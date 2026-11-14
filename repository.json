@@ -1,0 +1,17 @@
+{
+  "author": "Heatvent",
+  "gitHubUrl": "https://github.com/heatvent",
+  "packages": [
+    {
+      "id": "3640f90f-471b-42ed-a4cf-a9ca846ed3dc",
+      "name": "GE/Jasco Enbrighten Switch & Dimmer (Multi)",
+      "category": "Control",
+      "tags": [
+        "Lights & Switches",
+        "Tools & Utilities"
+      ],
+      "location": "https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/packageManifest.json",
+      "description": "Profile-driven GE/Jasco/UltraPro Enbrighten Z-Wave Plus Switch and Dimmer drivers covering 500S, 700S, and 800S models with auto-detect."
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "packageName": "GE/Jasco Enbrighten Switch & Dimmer (Multi)",
+  "author": "Heatvent",
+  "version": "1.0.1",
+  "minimumHEVersion": "2.2.3",
+  "dateReleased": "2026-11-14",
+  "releaseNotes": "v1.0.1 - Persist detected profile to device Data Values; author normalized to Heatvent.\nv1.0.0 - Initial multi-model Switch and Dimmer drivers (500S/700S/800S) with profile auto-detect.",
+  "documentationLink": "https://github.com/heatvent/hubitat-drivers",
+  "communityLink": "",
+  "category": "Control",
+  "tags": [
+    "Lights & Switches",
+    "Tools & Utilities"
+  ],
+  "drivers": [
+    {
+      "id": "e2c2bca0-c085-4729-8ee0-fb72a2b54449",
+      "name": "GE/Jasco Enbrighten Switch (Multi)",
+      "namespace": "Heatvent",
+      "location": "https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/Drivers/GE-Jasco-Enbrighten-Switch-Multi/GE-Jasco-Enbrighten-Switch-Multi.groovy",
+      "required": true
+    },
+    {
+      "id": "60ebb6b4-3f9f-42fe-a6ed-7a6b48d647bb",
+      "name": "GE/Jasco Enbrighten Dimmer (Multi)",
+      "namespace": "Heatvent",
+      "location": "https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/Drivers/GE-Jasco-Enbrighten-Dimmer-Multi/GE-Jasco-Enbrighten-Dimmer-Multi.groovy",
+      "required": true
+    }
+  ]
+}

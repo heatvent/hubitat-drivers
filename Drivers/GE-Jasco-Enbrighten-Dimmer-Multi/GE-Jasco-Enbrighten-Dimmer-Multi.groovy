@@ -13,11 +13,15 @@
  *    All button / Central Scene / association / S2 behavior comes from that work.
  *    Developed with Cursor.
  *
- *  Author:    Heatvent / Matt
+ *  Author:    Heatvent
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
- *  1.0.0 (2026-11-14) - Initial multi-model release (Heatvent / Matt)
+ *  1.0.1 (2026-11-14) - Persist detected profile to device Data Values (profileKey, profileName,
+ *                       profileGeneration, profileSource, profileColorLed, profileThreeWay) so the
+ *                       model ID is visible on the device page without overwriting user Notes.
+ *                     - Author credit normalized to Heatvent
+ *  1.0.0 (2026-11-14) - Initial multi-model release (Heatvent)
  *                       - Profile system keyed by "<productType>-<productId>" (hex, lowercase, no 0x)
  *                       - Auto-detect with optional forceProfile override
  *                       - Only parameters listed in the profile are written to the device
@@ -107,7 +111,7 @@ import groovy.transform.Field
 @Field static Map LED_COLORS = ["Red": 1, "Orange": 2, "Yellow": 3, "Green": 4, "Blue": 5, "Pink": 6, "Purple": 7, "White": 8]
 
 metadata {
-	definition (name: "GE/Jasco Enbrighten Dimmer (Multi)", namespace: "Heatvent", author: "Heatvent / Matt") {
+	definition (name: "GE/Jasco Enbrighten Dimmer (Multi)", namespace: "Heatvent", author: "Heatvent") {
 		capability "Actuator"
         capability "DoubleTapableButton"
         capability "HoldableButton"
@@ -145,7 +149,7 @@ metadata {
 }
 
  preferences {
-        input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: "All settings are listed for every model. Settings your dimmer does not support (for example color LED options on non-color models, or the 3-way add-on and min/max dim options on 500S models) are ignored and never written to the device. The detected model is shown in the 'profileName' state."
+        input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: "All settings are listed for every model. Settings your dimmer does not support (for example color LED options on non-color models, or the 3-way add-on and min/max dim options on 500S models) are ignored and never written to the device. The detected model is stored in device Data Values (profileKey, profileName, profileGeneration) and in state."
         input name: "forceProfile", type: "enum", title: "Device Profile Override", multiple: false, options: ["auto" : "Auto-detect (default)", "4944-3235" : "4944-3235 Enbrighten ZW3010 / 46203 [500S]", "4944-3236" : "4944-3236 Jasco ZW3010 / 46564 [500S]", "4944-3339" : "4944-3339 UltraPro ZW3010 / 39351 [500S]", "4944-3237" : "4944-3237 Enbrighten ZW3011 / 46204 [500S]", "4944-3238" : "4944-3238 Jasco ZW3011 / 46565 [500S]", "4944-3430" : "4944-3430 Enbrighten ZWA3016 / 58438 [700S]", "4944-3431" : "4944-3431 Enbrighten ZWA3017 / 59341 [700S]", "4944-3434" : "4944-3434 Jasco ZWA3016 / 59383 [700S]", "4944-3435" : "4944-3435 Jasco ZWA3017 / 59384 [700S]", "4944-3433" : "4944-3433 UltraPro ZWA3016 / 59350 [700S]", "4944-3537" : "4944-3537 Enbrighten ZWN3018 / 76593 [800S]", "4944-3630" : "4944-3630 Enbrighten ZWN3019 / 76595 [800S]", "4944-3539" : "4944-3539 Jasco ZWN3018 / 76597 [800S]", "4944-3631" : "4944-3631 Jasco ZWN3019 / 76599 [800S]", "4944-3538" : "4944-3538 UltraPro ZWN3020 / 76602 [800S]"], required: false, displayDuringSetup: true, defaultValue: "auto"
         input name: "paramLED", type: "enum", title: "(3) LED Indicator Behavior", multiple: false, options: ["0" : "LED ON When Switch OFF (default)", "1" : "LED ON When Switch ON", "2" : "LED Always OFF", "3" : "LED Always ON"], required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "paramInverted", type: "enum", title: "(4) Switch Buttons Direction", multiple: false, options: ["0" : "Normal (default)", "1" : "Inverted"], required: false, displayDuringSetup: true, defaultValue: "0"
@@ -205,31 +209,40 @@ private String detectProfileKey() {
     return "${prod}-${did}".toString()
 }
 
-private void storeProfile(String key, Map profile) {
-    if (state.profileKey != key) {
+private void storeProfile(String key, Map profile, String source = "auto") {
+    if (state.profileKey != key || state.profileSource != source) {
         if (DEVICE_PROFILES.containsKey(key)) {
-            log.info "${device.displayName} profile: ${key} - ${profile.name} (${profile.generation})"
+            log.info "${device.displayName} profile: ${key} - ${profile.name} (${profile.generation}) [${source}]"
         } else {
             log.warn "${device.displayName} unknown model fingerprint (${key}). Using conservative profile (core parameters only). Set 'Device Profile Override' in preferences if your model is known."
         }
     }
     state.profileKey = key
     state.profileName = profile.name
+    state.profileGeneration = profile.generation
+    state.profileSource = source
+    // Data Values survive driver changes and show on the device page (better than Notes for ID info)
+    updateDataValue("profileKey", key ?: "")
+    updateDataValue("profileName", profile?.name?.toString() ?: "")
+    updateDataValue("profileGeneration", profile?.generation?.toString() ?: "")
+    updateDataValue("profileSource", source ?: "")
+    updateDataValue("profileColorLed", profile?.colorLed ? "true" : "false")
+    updateDataValue("profileThreeWay", profile?.threeWay ? "true" : "false")
 }
 
-// Detect (or force) the profile and store it in state.profileKey / state.profileName
+// Detect (or force) the profile and store it in state + Data Values
 Map resolveProfile() {
     String forced = settings?.forceProfile
     if (forced && forced != "auto" && DEVICE_PROFILES.containsKey(forced)) {
-        storeProfile(forced, DEVICE_PROFILES[forced])
+        storeProfile(forced, DEVICE_PROFILES[forced], "forced")
         return DEVICE_PROFILES[forced]
     }
     String key = detectProfileKey()
     if (key && DEVICE_PROFILES.containsKey(key)) {
-        storeProfile(key, DEVICE_PROFILES[key])
+        storeProfile(key, DEVICE_PROFILES[key], "auto")
         return DEVICE_PROFILES[key]
     }
-    storeProfile(key ?: "unknown", FALLBACK_PROFILE)
+    storeProfile(key ?: "unknown", FALLBACK_PROFILE, key ? "fallback" : "unknown")
     return FALLBACK_PROFILE
 }
 
