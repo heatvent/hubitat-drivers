@@ -17,6 +17,13 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  1.0.3 (2026-11-14) - ConfigReport syncs preferences; association maxNodes from reports;
+ *                       driverVersion Data Value; ZW3010DV fingerprint (param 20 min dim);
+ *                       getParameter/setParameter, identify (Indicator CC);
+ *                       factoryResetDevice command for param 84 on 700S/800S (UI confirm).
+ *  1.0.2 (2026-11-14) - Live Config-Get verification: add params 30/31 to 500S dimmers; drop
+ *                       param 6 (ramp) from 700S/800S (unsupported); clarify param 5 labels;
+ *                       LED intensity prefs limited to documented 1-7 range.
  *  1.0.1 (2026-11-14) - Persist detected profile to device Data Values (profileKey, profileName,
  *                       profileGeneration, profileSource, profileColorLed, profileThreeWay) so the
  *                       model ID is visible on the device page without overwriting user Notes.
@@ -54,6 +61,8 @@
 
 import groovy.transform.Field
 
+@Field static final String DRIVER_VERSION = "1.0.3"
+
 // Base command class versions (700S / 800S). 500S profiles are downgraded in ccVersions().
 @Field static Map commandClassVersions = 
     [
@@ -62,35 +71,37 @@ import groovy.transform.Field
         ,0x72: 2    //Manufacturer Specific
         ,0x85: 2    //association
 	    ,0x86: 3    //Version
+        ,0x87: 3    //Indicator (identify on 700S/800S)
 ]
 
 // Profiles keyed by "<productType>-<productId>" (4 hex digits each, lowercase, no 0x prefix).
 // params : configuration parameter numbers this model supports (only these are written / read)
-// relayControl : reserved for models that expose a relay-control parameter (param 39); none of the
-//                models below are known to, so no parameter 39 traffic is generated.
+// Dimmer models do not use param 39 (relay control); that is switch-only.
 @Field static Map DEVICE_PROFILES = [
     // ---- 500S classic dimmers (no color LED, no 3-way add-on parameter) ----
-    "4944-3235": [name: "Enbrighten ZW3010 / 46203",   generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,32]]
-   ,"4944-3236": [name: "Jasco ZW3010 / 46564",        generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,32]]
-   ,"4944-3339": [name: "UltraPro ZW3010 / 39351",     generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,32]]
-   ,"4944-3237": [name: "Enbrighten ZW3011 / 46204",   generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,32]]
-   ,"4944-3238": [name: "Jasco ZW3011 / 46565",        generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,32]]
-    // ---- 700S color LED ----
-   ,"4944-3430": [name: "Enbrighten ZWA3016 / 58438",  generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,6,16,19,30,31,32,34,35,36]]
-   ,"4944-3431": [name: "Enbrighten ZWA3017 / 59341",  generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,6,16,19,30,31,32,34,35,36]]
-   ,"4944-3434": [name: "Jasco ZWA3016 / 59383",       generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,6,16,19,30,31,32,34,35,36]]
-   ,"4944-3435": [name: "Jasco ZWA3017 / 59384",       generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,6,16,19,30,31,32,34,35,36]]
-   ,"4944-3433": [name: "UltraPro ZWA3016 / 59350",    generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,6,16,19,30,31,32,34,35,36]]
-    // ---- 800S color LED ----
-   ,"4944-3537": [name: "Enbrighten ZWN3018 / 76593",  generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,6,16,19,30,31,32,34,35,36]]
-   ,"4944-3630": [name: "Enbrighten ZWN3019 / 76595",  generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,6,16,19,30,31,32,34,35,36]]
-   ,"4944-3539": [name: "Jasco ZWN3018 / 76597",       generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,6,16,19,30,31,32,34,35,36]]
-   ,"4944-3631": [name: "Jasco ZWN3019 / 76599",       generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,6,16,19,30,31,32,34,35,36]]
-   ,"4944-3538": [name: "UltraPro ZWN3020 / 76602",    generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,6,16,19,30,31,32,34,35,36]]
+    // Live Config-Get on ZW3010 confirmed 4, 6, 30, 31 (Alliance pages were incomplete / inconsistent).
+    "4944-3235": [name: "Enbrighten ZW3010 / 46203",   generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,30,31,32]]
+   ,"4944-3236": [name: "Jasco ZW3010 / 46564",        generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,30,31,32]]
+   ,"4944-3339": [name: "UltraPro ZW3010 / 39351",     generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,30,31,32]]
+   ,"4944-3237": [name: "Enbrighten ZW3011 / 46204",   generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,30,31,32]]
+   ,"4944-3238": [name: "Jasco ZW3011 / 46565",        generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,30,31,32]]
+   ,"4944-3330": [name: "Enbrighten ZW3010DV / 43105", generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,6,16,19,20,32]]
+    // ---- 700S color LED (no param 6 — Config-Get returned empty; manuals omit it) ----
+   ,"4944-3430": [name: "Enbrighten ZWA3016 / 58438",  generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,16,19,30,31,32,34,35,36]]
+   ,"4944-3431": [name: "Enbrighten ZWA3017 / 59341",  generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,16,19,30,31,32,34,35,36]]
+   ,"4944-3434": [name: "Jasco ZWA3016 / 59383",       generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,16,19,30,31,32,34,35,36]]
+   ,"4944-3435": [name: "Jasco ZWA3017 / 59384",       generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,16,19,30,31,32,34,35,36]]
+   ,"4944-3433": [name: "UltraPro ZWA3016 / 59350",    generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,16,19,30,31,32,34,35,36]]
+    // ---- 800S color LED (manuals match 700S set; no param 6) ----
+   ,"4944-3537": [name: "Enbrighten ZWN3018 / 76593",  generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,16,19,30,31,32,34,35,36]]
+   ,"4944-3630": [name: "Enbrighten ZWN3019 / 76595",  generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,16,19,30,31,32,34,35,36]]
+   ,"4944-3539": [name: "Jasco ZWN3018 / 76597",       generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,16,19,30,31,32,34,35,36]]
+   ,"4944-3631": [name: "Jasco ZWN3019 / 76599",       generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,16,19,30,31,32,34,35,36]]
+   ,"4944-3538": [name: "UltraPro ZWN3020 / 76602",    generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,16,19,30,31,32,34,35,36]]
 ]
 
 // Used when the model is not recognised: core parameters only, no color LED writes.
-@Field static Map FALLBACK_PROFILE = [name: "Unknown model (conservative)", generation: "unknown", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,32]]
+@Field static Map FALLBACK_PROFILE = [name: "Unknown model (conservative)", generation: "unknown", colorLed: false, threeWay: false, relayControl: false, params: [3,4,6,16,19,30,31,32]]
 
 // Parameter number -> preference name and default (written in this order)
 @Field static List PARAM_PREFS = [
@@ -100,6 +111,7 @@ import groovy.transform.Field
     ,[num: 6,  setting: "paramUpDownRate",         dflt: 0]    //DIMMER
     ,[num: 16, setting: "paramSwitchMode",         dflt: 0]    //DIMMER
     ,[num: 19, setting: "paramAlternateExclusion", dflt: 0]
+    ,[num: 20, setting: "paramMinDim",             dflt: 1]    //DIMMER ZW3010DV uses 20 instead of 30
     ,[num: 30, setting: "paramMinDim",             dflt: 1]    //DIMMER
     ,[num: 31, setting: "paramMaxDim",             dflt: 99]   //DIMMER
     ,[num: 32, setting: "paramDefaultDim",         dflt: 0]    //DIMMER
@@ -127,6 +139,10 @@ metadata {
 		command "setDefaultDimmerLevel", [[name:"Default ON %",type:"NUMBER", description:"Default Dimmer Level Used when Turning ON. (0=Last Dimmer Value)", range: "0..99"]]
 		command "setIndicatorBehavior", [[name:"LED Indicator Behavior", type: "ENUM", description: "", constraints: ["LED ON When Switch OFF", "LED ON When Switch ON", "LED Always OFF", "LED Always ON", "0", "1", "2", "3"] ] ]
 		command "setLedColor", [[name:"LED Color (color LED models only)", type: "ENUM", description: "Param 34. Ignored on models without a color LED.", constraints: ["Red", "Orange", "Yellow", "Green", "Blue", "Pink", "Purple", "White"] ] ]
+		command "getParameter", [[name:"Parameter Number*", type: "NUMBER", description: "Configuration parameter to read", range: "1..255"]]
+		command "setParameter", [[name:"Parameter Number*", type: "NUMBER", description: "Configuration parameter to write (not 84 — use factoryResetDevice)", range: "1..255"], [name:"Value*", type: "NUMBER", description: "Value to write", range: "0..255"]]
+		command "identify", [[name:"Identify", type: "ENUM", description: "Blink the indicator via Indicator CC (700S/800S)", constraints: ["Blink"] ] ]
+		command "factoryResetDevice", [[name:"Confirm factory reset (param 84)", type: "ENUM", description: "Writes param 84=1 on 700S/800S. Device leaves the Z-Wave network.", constraints: ["RESET"] ] ]
         
 		// 500S classic
 		fingerprint mfr:"0063", prod:"4944", deviceId:"3235", inClusters:"0x5E,0x26,0x85,0x59,0x86,0x72,0x55,0x5A,0x73,0x5B,0x9F,0x6C,0x70,0x22,0x7A", controllerType: "ZWV" // Enbrighten ZW3010
@@ -134,6 +150,7 @@ metadata {
 		fingerprint mfr:"0063", prod:"4944", deviceId:"3339", inClusters:"0x5E,0x26,0x85,0x59,0x86,0x72,0x55,0x5A,0x73,0x5B,0x9F,0x6C,0x70,0x22,0x7A", controllerType: "ZWV" // UltraPro ZW3010
 		fingerprint mfr:"0063", prod:"4944", deviceId:"3237" // Enbrighten ZW3011
 		fingerprint mfr:"0063", prod:"4944", deviceId:"3238" // Jasco ZW3011
+		fingerprint mfr:"0063", prod:"4944", deviceId:"3330" // Enbrighten ZW3010DV / 43105
 		// 700S color
 		fingerprint mfr:"0063", prod:"4944", deviceId:"3430", inClusters:"0x5E,0x22,0x85,0x8E,0x59,0x26,0x87,0x55,0x86,0x72,0x5A,0x73,0x70,0x9F,0x6C,0x5B,0x7A", controllerType: "ZWV" // Enbrighten ZWA3016
 		fingerprint mfr:"0063", prod:"4944", deviceId:"3431" // Enbrighten ZWA3017
@@ -149,23 +166,23 @@ metadata {
 }
 
  preferences {
-        input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: "All settings are listed for every model. Settings your dimmer does not support (for example color LED options on non-color models, or the 3-way add-on and min/max dim options on 500S models) are ignored and never written to the device. The detected model is stored in device Data Values (profileKey, profileName, profileGeneration) and in state."
-        input name: "forceProfile", type: "enum", title: "Device Profile Override", multiple: false, options: ["auto" : "Auto-detect (default)", "4944-3235" : "4944-3235 Enbrighten ZW3010 / 46203 [500S]", "4944-3236" : "4944-3236 Jasco ZW3010 / 46564 [500S]", "4944-3339" : "4944-3339 UltraPro ZW3010 / 39351 [500S]", "4944-3237" : "4944-3237 Enbrighten ZW3011 / 46204 [500S]", "4944-3238" : "4944-3238 Jasco ZW3011 / 46565 [500S]", "4944-3430" : "4944-3430 Enbrighten ZWA3016 / 58438 [700S]", "4944-3431" : "4944-3431 Enbrighten ZWA3017 / 59341 [700S]", "4944-3434" : "4944-3434 Jasco ZWA3016 / 59383 [700S]", "4944-3435" : "4944-3435 Jasco ZWA3017 / 59384 [700S]", "4944-3433" : "4944-3433 UltraPro ZWA3016 / 59350 [700S]", "4944-3537" : "4944-3537 Enbrighten ZWN3018 / 76593 [800S]", "4944-3630" : "4944-3630 Enbrighten ZWN3019 / 76595 [800S]", "4944-3539" : "4944-3539 Jasco ZWN3018 / 76597 [800S]", "4944-3631" : "4944-3631 Jasco ZWN3019 / 76599 [800S]", "4944-3538" : "4944-3538 UltraPro ZWN3020 / 76602 [800S]"], required: false, displayDuringSetup: true, defaultValue: "auto"
+        input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: "All settings are listed for every model. Settings your dimmer does not support (for example color LED options on non-color models, or ramp rate on 700S/800S) are ignored and never written to the device. The detected model is stored in device Data Values (profileKey, profileName, profileGeneration) and in state."
+        input name: "forceProfile", type: "enum", title: "Device Profile Override", multiple: false, options: ["auto" : "Auto-detect (default)", "4944-3235" : "4944-3235 Enbrighten ZW3010 / 46203 [500S]", "4944-3236" : "4944-3236 Jasco ZW3010 / 46564 [500S]", "4944-3339" : "4944-3339 UltraPro ZW3010 / 39351 [500S]", "4944-3237" : "4944-3237 Enbrighten ZW3011 / 46204 [500S]", "4944-3238" : "4944-3238 Jasco ZW3011 / 46565 [500S]", "4944-3330" : "4944-3330 Enbrighten ZW3010DV / 43105 [500S]", "4944-3430" : "4944-3430 Enbrighten ZWA3016 / 58438 [700S]", "4944-3431" : "4944-3431 Enbrighten ZWA3017 / 59341 [700S]", "4944-3434" : "4944-3434 Jasco ZWA3016 / 59383 [700S]", "4944-3435" : "4944-3435 Jasco ZWA3017 / 59384 [700S]", "4944-3433" : "4944-3433 UltraPro ZWA3016 / 59350 [700S]", "4944-3537" : "4944-3537 Enbrighten ZWN3018 / 76593 [800S]", "4944-3630" : "4944-3630 Enbrighten ZWN3019 / 76595 [800S]", "4944-3539" : "4944-3539 Jasco ZWN3018 / 76597 [800S]", "4944-3631" : "4944-3631 Jasco ZWN3019 / 76599 [800S]", "4944-3538" : "4944-3538 UltraPro ZWN3020 / 76602 [800S]"], required: false, displayDuringSetup: true, defaultValue: "auto"
         input name: "paramLED", type: "enum", title: "(3) LED Indicator Behavior", multiple: false, options: ["0" : "LED ON When Switch OFF (default)", "1" : "LED ON When Switch ON", "2" : "LED Always OFF", "3" : "LED Always ON"], required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "paramInverted", type: "enum", title: "(4) Switch Buttons Direction", multiple: false, options: ["0" : "Normal (default)", "1" : "Inverted"], required: false, displayDuringSetup: true, defaultValue: "0"
-		input name: "paramThreeWayType", type: "enum", title: "(5) 3-Way Add-On Switch [700S/800S only]", multiple: false, options: ["0" : "Off (default)", "1" : "On"], required: false, displayDuringSetup: true, defaultValue: "0"
-        input name: "paramUpDownRate", type: "enum", title: "(6) Adjust the speed at which the dimmer ramps to a specific value", multiple: false, options: ["0" : "Fast (default)", "1" : "Slow"], required: false, displayDuringSetup: true, defaultValue: "0" //DIMMER
-        input name: "paramSwitchMode", type: "enum", title: "(16) Turn your dimmer into an On/Off switch", multiple: false, options: ["0" : "OFF (default)", "1" : "ON"], required: false, displayDuringSetup: true, defaultValue: "0" //DIMMER
-		input name: "paramAlternateExclusion", type: "enum", title: "(19) Enable alternate exclusion (2-ON, 2-OFF)", multiple: false, options: ["0" : "OFF (default)", "1" : "ON"], required: false, displayDuringSetup: true, defaultValue: "0"
-		input name: "paramMinDim", type: "number", title: "(30) Minimum Dim Threshold (1-99%) [700S/800S only]", multiple: false, range: "1..99", required: false, displayDuringSetup: true, defaultValue: "1" //DIMMER
-        input name: "paramMaxDim", type: "number", title: "(31) Maximum Dim Threshold (1-99%) [700S/800S only]", multiple: false, range: "1..99", required: false, displayDuringSetup: true, defaultValue: "99" //DIMMER
-        input name: "paramDefaultDim", type: "number", title: "(32) Default ON % (Default=0=Last %)", multiple: false, range: "0..99", required: false, displayDuringSetup: true, defaultValue: "0"
+		input name: "paramThreeWayType", type: "enum", title: "(5) 3-Way Type [700S/800S only]", multiple: false, options: ["0" : "Add-On Switch (default)", "1" : "Standard 3-Way Switch"], required: false, displayDuringSetup: true, defaultValue: "0"
+        input name: "paramUpDownRate", type: "enum", title: "(6) Dim up/down rate [500S only]", multiple: false, options: ["0" : "Fast (default)", "1" : "Slow"], required: false, displayDuringSetup: true, defaultValue: "0" //DIMMER
+        input name: "paramSwitchMode", type: "enum", title: "(16) Switch Mode", multiple: false, options: ["0" : "Dimmer mode (default)", "1" : "On/Off switch mode"], required: false, displayDuringSetup: true, defaultValue: "0" //DIMMER
+		input name: "paramAlternateExclusion", type: "enum", title: "(19) Alternate Exclusion", multiple: false, options: ["0" : "Single paddle press (default)", "1" : "Alternate exclusion sequence / menu"], required: false, displayDuringSetup: true, defaultValue: "0"
+		input name: "paramMinDim", type: "number", title: "(30/20) Minimum Dim Threshold (1-99%; param 20 on ZW3010DV)", multiple: false, range: "1..99", required: false, displayDuringSetup: true, defaultValue: "1" //DIMMER
+        input name: "paramMaxDim", type: "number", title: "(31) Maximum Brightness Threshold (1-99%)", multiple: false, range: "1..99", required: false, displayDuringSetup: true, defaultValue: "99" //DIMMER
+        input name: "paramDefaultDim", type: "number", title: "(32) Default ON % (0 = last level)", multiple: false, range: "0..99", required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "paramLEDColor", type: "enum", title: "(34) LED Light Color [color LED models only]", multiple: false, options: ["1" : "Red", "2" : "Orange", "3" : "Yellow", "4" : "Green", "5" : "Blue (default)", "6" : "Pink", "7" : "Purple", "8" : "White"], required: false, displayDuringSetup: true, defaultValue: "5"
-        input name: "paramIntensity", type: "enum", title: "(35) LED Intensity [color LED models only]", multiple: false, options: ["0" : "0 - Off","1" : "1", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7"], required: false, displayDuringSetup: true, defaultValue: "4"
+        input name: "paramIntensity", type: "enum", title: "(35) LED Intensity [color LED models only]", multiple: false, options: ["1" : "1 (lowest)", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7 (highest)"], required: false, displayDuringSetup: true, defaultValue: "4"
         // FIX 2026-11-12 F2: typo Intesity -> Intensity
-        input name: "paramGuidelightIntensity", type: "enum", title: "(36) Guidelight Intensity [color LED models only]", multiple: false, options: ["0" : "0 - Off","1" : "1", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7"], required: false, displayDuringSetup: true, defaultValue: "4"
-        input name: "requestedGroup2", type: "text", title: "Association Group 2 Members (Max of 5):", required: false
-        input name: "requestedGroup3", type: "text", title: "Association Group 3 Members (Max of 4):", required: false
+        input name: "paramGuidelightIntensity", type: "enum", title: "(36) Guidelight Intensity [color LED models only]", multiple: false, options: ["1" : "1 (lowest)", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7 (highest)"], required: false, displayDuringSetup: true, defaultValue: "4"
+        input name: "requestedGroup2", type: "text", title: "Association Group 2 Members (device-reported max; typically 5):", required: false
+        input name: "requestedGroup3", type: "text", title: "Association Group 3 Members (hub + extras; device-reported max minus hub):", required: false
         input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false
 	    input name: "logDesc", type: "bool", title: "Enable descriptionText logging", defaultValue: true
     }
@@ -228,6 +245,7 @@ private void storeProfile(String key, Map profile, String source = "auto") {
     updateDataValue("profileSource", source ?: "")
     updateDataValue("profileColorLed", profile?.colorLed ? "true" : "false")
     updateDataValue("profileThreeWay", profile?.threeWay ? "true" : "false")
+    updateDataValue("driverVersion", DRIVER_VERSION)
 }
 
 // Detect (or force) the profile and store it in state + Data Values
@@ -330,6 +348,11 @@ def zwaveEvent(hubitat.zwave.commands.basicv2.BasicSet cmd) {
 
 def zwaveEvent(hubitat.zwave.commands.associationv2.AssociationReport cmd) {
 	if (logEnable) log.debug "---ASSOCIATION REPORT V2--- ${device.displayName} sent groupingIdentifier: ${cmd.groupingIdentifier} maxNodesSupported: ${cmd.maxNodesSupported} nodeId: ${cmd.nodeId} reportsToFollow: ${cmd.reportsToFollow}"
+	if (cmd.maxNodesSupported != null) {
+		Integer maxN = cmd.maxNodesSupported as Integer
+		state["assocMaxGroup${cmd.groupingIdentifier}"] = maxN
+		updateDataValue("assocMaxGroup${cmd.groupingIdentifier}", maxN.toString())
+	}
     if (cmd.groupingIdentifier == 3) {
     	if (cmd.nodeId.contains(zwaveHubNodeId)) {
         	sendEvent(name: "numberOfButtons", value: 6, displayed: false)
@@ -345,11 +368,27 @@ def zwaveEvent(hubitat.zwave.commands.associationv2.AssociationReport cmd) {
 }
 
 def zwaveEvent(hubitat.zwave.commands.configurationv2.ConfigurationReport cmd) {
-	if (logEnable) log.debug "---CONFIGURATION REPORT V2--- ${device.displayName} sent ${cmd}"
+	handleConfigurationReport(cmd)
 }
 
+// FIX 2026-11-12 F3: 700S/800S profiles use Configuration CC v4; handle v4 reports
 def zwaveEvent(hubitat.zwave.commands.configurationv4.ConfigurationReport cmd) {
-	if (logEnable) log.debug "---CONFIGURATION REPORT V4--- ${device.displayName} sent ${cmd}"
+	handleConfigurationReport(cmd)
+}
+
+private void handleConfigurationReport(cmd) {
+	Integer param = cmd.parameterNumber as Integer
+	Integer value = cmd.scaledConfigurationValue as Integer
+	if (logEnable) log.debug "---CONFIGURATION REPORT--- ${device.displayName} param ${param} = ${value}"
+	def row = PARAM_PREFS.find { it.num == param }
+	if (!row) return
+	String val = value.toString()
+	// Number-style prefs (dimmer thresholds / default level); everything else is enum
+	if (param in [20, 30, 31, 32]) {
+		device.updateSetting(row.setting, [type: "number", value: val])
+	} else {
+		device.updateSetting(row.setting, [type: "enum", value: val])
+	}
 }
 
 def zwaveEvent(hubitat.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {                                 //DIMMER
@@ -523,6 +562,10 @@ def zwaveEvent(hubitat.zwave.commands.centralscenev1.CentralSceneNotification cm
     return result
 }
 
+def zwaveEvent(hubitat.zwave.commands.indicatorv3.IndicatorReport cmd) {
+	if (logEnable) log.debug "IndicatorReport: ${cmd}"
+}
+
 def zwaveEvent(hubitat.zwave.Command cmd) {
     log.warn "${device.displayName} received unhandled command: ${cmd}"
 }
@@ -614,6 +657,7 @@ def refresh() {
 }
 
 def installed() {
+	updateDataValue("driverVersion", DRIVER_VERSION)
 	configure()
 }
 
@@ -748,7 +792,15 @@ private parseAssocGroupList(list, group) {
     def nodes = group == 2 ? [] : [zwaveHubNodeId]
     if (list) {
         def nodeList = list.split(',')
-        def max = group == 2 ? 5 : 4
+        Integer reported = state["assocMaxGroup${group}"] as Integer
+        // Group 2: all slots are user nodes. Group 3: hub occupies one slot for button reports.
+        def max
+        if (group == 2) {
+            max = reported ?: 5
+        } else {
+            Integer supported = reported ?: 5
+            max = Math.max(0, supported - 1)
+        }
         def count = 0
 
         nodeList.each { node ->
@@ -776,6 +828,61 @@ private parseAssocGroupList(list, group) {
     }
 	if (logEnable) log.debug "Nodes is $nodes"
     return nodes
+}
+
+
+def getParameter(paramNum) {
+	Map profile = currentProfile()
+	int p = paramNum as Integer
+	log.info "getParameter(${p})"
+	delayBetween([cfgGet(profile, p)], 250)
+}
+
+def setParameter(paramNum, value) {
+	Map profile = currentProfile()
+	int p = paramNum as Integer
+	int v = value as Integer
+	if (p == 84) {
+		log.warn "setParameter: use factoryResetDevice(RESET) for param 84"
+		return
+	}
+	log.info "setParameter(${p}, ${v})"
+	delayBetween([
+		cfgSet(profile, p, v),
+		cfgGet(profile, p)
+	], 250)
+}
+
+def identify(unused = null) {
+	Map profile = currentProfile()
+	if (!(profile.generation in ["700S", "800S"])) {
+		log.warn "identify: Indicator CC is primarily supported on 700S/800S (${profile.name})"
+	}
+	log.info "${device.displayName}: identify (Indicator blink)"
+	List indicators = [
+		[indicatorId: 0x50, propertyId: 0x03, value: 0x08],
+		[indicatorId: 0x50, propertyId: 0x04, value: 0x03],
+		[indicatorId: 0x50, propertyId: 0x05, value: 0x06]
+	]
+	delayBetween([
+		secure(zwave.indicatorV3.indicatorSet(indicatorCount: 3, value: 0, indicatorValues: indicators).format())
+	], 250)
+}
+
+def factoryResetDevice(confirm) {
+	if (confirm?.toString() != "RESET") {
+		log.warn "factoryResetDevice aborted: select RESET to confirm"
+		return
+	}
+	Map profile = currentProfile()
+	if (!(profile.generation in ["700S", "800S"])) {
+		log.warn "factoryResetDevice: param 84 is not available on ${profile.name} (${profile.generation})"
+		return
+	}
+	log.warn "${device.displayName}: sending Z-Wave factory reset (param 84=1). Device will leave the network and need re-inclusion."
+	delayBetween([
+		cfgSet(profile, 84, 1)
+	], 250)
 }
 
 def logsOff(){

@@ -1,0 +1,25 @@
+{
+  "packageName": "Zooz ZSE50 Siren & Chime",
+  "author": "Heatvent",
+  "version": "2.0.0",
+  "minimumHEVersion": "2.3.9",
+  "dateReleased": "2026-11-14",
+  "releaseNotes": "v2.0.0 - Full Zooz parameter map (1-16), S2 zwaveSecureEncap, Chime/Alarm/strobe, playSound, setVolume, LED color, association group 2, fingerprints. Corrects prior local driver that mis-mapped params 1-3.",
+  "documentationLink": "https://github.com/heatvent/hubitat-drivers",
+  "communityLink": "",
+  "category": "Security",
+  "tags": [
+    "Safety & Security",
+    "LAN & Cloud",
+    "Tools & Utilities"
+  ],
+  "drivers": [
+    {
+      "id": "26176e2e-6fa4-469d-bcf0-7bdbacce397e",
+      "name": "Zooz ZSE50 Siren & Chime",
+      "namespace": "Heatvent",
+      "location": "https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/Drivers/Zooz-ZSE50-Siren-Chime/Zooz-ZSE50-Siren-Chime.groovy",
+      "required": true
+    }
+  ]
+}

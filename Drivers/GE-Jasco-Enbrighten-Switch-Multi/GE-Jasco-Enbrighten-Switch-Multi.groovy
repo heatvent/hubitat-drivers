@@ -17,6 +17,13 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  1.0.3 (2026-11-14) - ConfigReport syncs preferences; association maxNodes from reports;
+ *                       driverVersion Data Value; DV fingerprints (ZW4008DV/ZW4009DV);
+ *                       setRelayControl, getParameter/setParameter, identify (Indicator CC);
+ *                       factoryResetDevice command for param 84 on 700S/800S (UI confirm).
+ *  1.0.2 (2026-11-14) - Live Config-Get verification vs Alliance/manuals: expose param 39 (Relay
+ *                       Control) on 700S/800S switches; clarify param 5 3-Way labels (Add-On vs
+ *                       Standard); LED intensity prefs limited to documented 1-7 range.
  *  1.0.1 (2026-11-14) - Persist detected profile to device Data Values (profileKey, profileName,
  *                       profileGeneration, profileSource, profileColorLed, profileThreeWay) so the
  *                       model ID is visible on the device page without overwriting user Notes.
@@ -48,6 +55,8 @@
 
 import groovy.transform.Field
 
+@Field static final String DRIVER_VERSION = "1.0.3"
+
 // Base command class versions (700S / 800S). 500S profiles are downgraded in ccVersions().
 @Field static Map commandClassVersions = 
     [
@@ -56,35 +65,38 @@ import groovy.transform.Field
         ,0x72: 2    //Manufacturer Specific
         ,0x85: 2    //association
 	    ,0x86: 3    //Version
+        ,0x87: 3    //Indicator (identify on 700S/800S)
 ]
 
 // Profiles keyed by "<productType>-<productId>" (4 hex digits each, lowercase, no 0x prefix).
 // params : configuration parameter numbers this model supports (only these are written / read)
-// relayControl : reserved for models that expose a relay-control parameter (param 39); none of the
-//                models below are known to, so no parameter 39 traffic is generated.
+// relayControl : models that expose param 39 (paddle controls relay vs smart-bulb / always-on power).
 @Field static Map DEVICE_PROFILES = [
     // ---- 500S classic (no color LED, no 3-way add-on parameter) ----
+    // Live Config-Get on ZW4008 confirmed param 4 (invert) even though some Alliance pages omit it.
     "4952-3135": [name: "Enbrighten ZW4008 / 46201",   generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
    ,"4952-3136": [name: "Jasco ZW4008 / 46562",        generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
    ,"4952-3237": [name: "UltraPro ZW4008 / 39348",     generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
    ,"4952-3137": [name: "Enbrighten ZW4009 / 46202",   generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
    ,"4952-3138": [name: "Jasco ZW4009 / 46563",        generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
    ,"4952-3238": [name: "UltraPro ZW4009 / 39354",     generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
+   ,"4952-3139": [name: "Enbrighten ZW4008DV / 43072", generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
+   ,"4952-3231": [name: "Enbrighten ZW4009DV / 43074", generation: "500S", colorLed: false, threeWay: false, relayControl: false, params: [3,4,19]]
     // ---- 700S color LED ----
-   ,"4952-3239": [name: "Enbrighten ZWA4011 / 58433",    generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3331": [name: "Enbrighten ZWA4011DV / 59337",  generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3335": [name: "Jasco ZWA4011 / 59381",         generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3333": [name: "UltraPro ZWA4011 / 59347",      generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3330": [name: "Enbrighten ZWA4012 / 58436",    generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3332": [name: "Enbrighten ZWA4012DV / 59338",  generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3336": [name: "Jasco ZWA4012 / 59382",         generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3334": [name: "UltraPro ZWA4012 / 59368",      generation: "700S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
+   ,"4952-3239": [name: "Enbrighten ZWA4011 / 58433",    generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3331": [name: "Enbrighten ZWA4011DV / 59337",  generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3335": [name: "Jasco ZWA4011 / 59381",         generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3333": [name: "UltraPro ZWA4011 / 59347",      generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3330": [name: "Enbrighten ZWA4012 / 58436",    generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3332": [name: "Enbrighten ZWA4012DV / 59338",  generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3336": [name: "Jasco ZWA4012 / 59382",         generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3334": [name: "UltraPro ZWA4012 / 59368",      generation: "700S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
     // ---- 800S color LED ----
-   ,"4952-3435": [name: "Enbrighten ZWN4015 / 76591",    generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3437": [name: "Jasco ZWN4015 / 76596",         generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3438": [name: "Enbrighten ZWN4016 / 76592",    generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3530": [name: "Jasco ZWN4016 / 76598",         generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
-   ,"4952-3534": [name: "UltraPro ZWN4017 / 76601",      generation: "800S", colorLed: true, threeWay: true, relayControl: false, params: [3,4,5,19,34,35,36]]
+   ,"4952-3435": [name: "Enbrighten ZWN4015 / 76591",    generation: "800S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3437": [name: "Jasco ZWN4015 / 76596",         generation: "800S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3438": [name: "Enbrighten ZWN4016 / 76592",    generation: "800S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3530": [name: "Jasco ZWN4016 / 76598",         generation: "800S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
+   ,"4952-3534": [name: "UltraPro ZWN4017 / 76601",      generation: "800S", colorLed: true, threeWay: true, relayControl: true,  params: [3,4,5,19,34,35,36,39]]
 ]
 
 // Used when the model is not recognised: core parameters only, no color LED writes.
@@ -99,6 +111,7 @@ import groovy.transform.Field
     ,[num: 34, setting: "paramLEDColor",           dflt: 5]   // F7 Blue
     ,[num: 35, setting: "paramIntensity",          dflt: 4]   // F7
     ,[num: 36, setting: "paramGuidelightIntensity",dflt: 4]   // F7
+    ,[num: 39, setting: "paramRelayControl",       dflt: 0]   // smart-bulb / always-on power
 ]
 
 @Field static Map LED_COLORS = ["Red": 1, "Orange": 2, "Yellow": 3, "Green": 4, "Blue": 5, "Pink": 6, "Purple": 7, "White": 8]
@@ -118,6 +131,11 @@ metadata {
         
 	    command "setIndicatorBehavior", [[name:"LED Indicator Behavior", type: "ENUM", description: "", constraints: ["LED ON When Switch OFF", "LED ON When Switch ON", "LED Always OFF", "LED Always ON", "0", "1", "2", "3"] ] ]
 	    command "setLedColor", [[name:"LED Color (color LED models only)", type: "ENUM", description: "Param 34. Ignored on models without a color LED.", constraints: ["Red", "Orange", "Yellow", "Green", "Blue", "Pink", "Purple", "White"] ] ]
+	    command "setRelayControl", [[name:"Relay Control (700S/800S)", type: "ENUM", description: "Param 39. Smart bulb mode keeps line power on and relay off.", constraints: ["Paddle controls relay", "Smart bulb mode"] ] ]
+	    command "getParameter", [[name:"Parameter Number*", type: "NUMBER", description: "Configuration parameter to read", range: "1..255"]]
+	    command "setParameter", [[name:"Parameter Number*", type: "NUMBER", description: "Configuration parameter to write (not 84 — use factoryResetDevice)", range: "1..255"], [name:"Value*", type: "NUMBER", description: "Value to write", range: "0..255"]]
+	    command "identify", [[name:"Identify", type: "ENUM", description: "Blink the indicator via Indicator CC (700S/800S)", constraints: ["Blink"] ] ]
+	    command "factoryResetDevice", [[name:"Confirm factory reset (param 84)", type: "ENUM", description: "Writes param 84=1 on 700S/800S. Device leaves the Z-Wave network.", constraints: ["RESET"] ] ]
         
         // 500S classic
         fingerprint mfr:"0063", prod:"4952", deviceId:"3135", inClusters:"0x5E,0x25,0x85,0x59,0x86,0x72,0x55,0x5A,0x73,0x5B,0x9F,0x6C,0x70,0x2C,0x2B,0x22,0x7A", controllerType: "ZWV" // Enbrighten ZW4008
@@ -126,6 +144,8 @@ metadata {
         fingerprint mfr:"0063", prod:"4952", deviceId:"3137" // Enbrighten ZW4009
         fingerprint mfr:"0063", prod:"4952", deviceId:"3138" // Jasco ZW4009
         fingerprint mfr:"0063", prod:"4952", deviceId:"3238" // UltraPro ZW4009
+        fingerprint mfr:"0063", prod:"4952", deviceId:"3139" // Enbrighten ZW4008DV / 43072
+        fingerprint mfr:"0063", prod:"4952", deviceId:"3231" // Enbrighten ZW4009DV / 43074
         // 700S color
         fingerprint mfr:"0063", prod:"4952", deviceId:"3239", inClusters:"0x5E,0x22,0x85,0x8E,0x59,0x87,0x25,0x2B,0x2C,0x55,0x86,0x72,0x5A,0x73,0x70,0x9F,0x6C,0x5B,0x7A", controllerType: "ZWV" // Enbrighten ZWA4011
         fingerprint mfr:"0063", prod:"4952", deviceId:"3331" // Enbrighten ZWA4011DV
@@ -144,18 +164,19 @@ metadata {
 	}
 
  preferences {
-        input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: "All settings are listed for every model. Settings your switch does not support (for example color LED options on non-color models, or the 3-way add-on option on 500S models) are ignored and never written to the device. The detected model is stored in device Data Values (profileKey, profileName, profileGeneration) and in state."
-        input name: "forceProfile", type: "enum", title: "Device Profile Override", multiple: false, options: ["auto" : "Auto-detect (default)", "4952-3135" : "4952-3135 Enbrighten ZW4008 / 46201 [500S]", "4952-3136" : "4952-3136 Jasco ZW4008 / 46562 [500S]", "4952-3237" : "4952-3237 UltraPro ZW4008 / 39348 [500S]", "4952-3137" : "4952-3137 Enbrighten ZW4009 / 46202 [500S]", "4952-3138" : "4952-3138 Jasco ZW4009 / 46563 [500S]", "4952-3238" : "4952-3238 UltraPro ZW4009 / 39354 [500S]", "4952-3239" : "4952-3239 Enbrighten ZWA4011 / 58433 [700S]", "4952-3331" : "4952-3331 Enbrighten ZWA4011DV / 59337 [700S]", "4952-3335" : "4952-3335 Jasco ZWA4011 / 59381 [700S]", "4952-3333" : "4952-3333 UltraPro ZWA4011 / 59347 [700S]", "4952-3330" : "4952-3330 Enbrighten ZWA4012 / 58436 [700S]", "4952-3332" : "4952-3332 Enbrighten ZWA4012DV / 59338 [700S]", "4952-3336" : "4952-3336 Jasco ZWA4012 / 59382 [700S]", "4952-3334" : "4952-3334 UltraPro ZWA4012 / 59368 [700S]", "4952-3435" : "4952-3435 Enbrighten ZWN4015 / 76591 [800S]", "4952-3437" : "4952-3437 Jasco ZWN4015 / 76596 [800S]", "4952-3438" : "4952-3438 Enbrighten ZWN4016 / 76592 [800S]", "4952-3530" : "4952-3530 Jasco ZWN4016 / 76598 [800S]", "4952-3534" : "4952-3534 UltraPro ZWN4017 / 76601 [800S]"], required: false, displayDuringSetup: true, defaultValue: "auto"
+        input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: "All settings are listed for every model. Settings your switch does not support (for example color LED, 3-way type, or relay control on 500S models) are ignored and never written to the device. The detected model is stored in device Data Values (profileKey, profileName, profileGeneration) and in state."
+        input name: "forceProfile", type: "enum", title: "Device Profile Override", multiple: false, options: ["auto" : "Auto-detect (default)", "4952-3135" : "4952-3135 Enbrighten ZW4008 / 46201 [500S]", "4952-3136" : "4952-3136 Jasco ZW4008 / 46562 [500S]", "4952-3237" : "4952-3237 UltraPro ZW4008 / 39348 [500S]", "4952-3137" : "4952-3137 Enbrighten ZW4009 / 46202 [500S]", "4952-3138" : "4952-3138 Jasco ZW4009 / 46563 [500S]", "4952-3238" : "4952-3238 UltraPro ZW4009 / 39354 [500S]", "4952-3139" : "4952-3139 Enbrighten ZW4008DV / 43072 [500S]", "4952-3231" : "4952-3231 Enbrighten ZW4009DV / 43074 [500S]", "4952-3239" : "4952-3239 Enbrighten ZWA4011 / 58433 [700S]", "4952-3331" : "4952-3331 Enbrighten ZWA4011DV / 59337 [700S]", "4952-3335" : "4952-3335 Jasco ZWA4011 / 59381 [700S]", "4952-3333" : "4952-3333 UltraPro ZWA4011 / 59347 [700S]", "4952-3330" : "4952-3330 Enbrighten ZWA4012 / 58436 [700S]", "4952-3332" : "4952-3332 Enbrighten ZWA4012DV / 59338 [700S]", "4952-3336" : "4952-3336 Jasco ZWA4012 / 59382 [700S]", "4952-3334" : "4952-3334 UltraPro ZWA4012 / 59368 [700S]", "4952-3435" : "4952-3435 Enbrighten ZWN4015 / 76591 [800S]", "4952-3437" : "4952-3437 Jasco ZWN4015 / 76596 [800S]", "4952-3438" : "4952-3438 Enbrighten ZWN4016 / 76592 [800S]", "4952-3530" : "4952-3530 Jasco ZWN4016 / 76598 [800S]", "4952-3534" : "4952-3534 UltraPro ZWN4017 / 76601 [800S]"], required: false, displayDuringSetup: true, defaultValue: "auto"
         input name: "paramLED", type: "enum", title: "(3) LED Indicator Behavior", multiple: false, options: ["0" : "LED ON When Switch OFF (default)", "1" : "LED ON When Switch ON", "2" : "LED Always OFF", "3" : "LED Always ON"], required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "paramInverted", type: "enum", title: "(4) Switch Buttons Direction", multiple: false, options: ["0" : "Normal (default)", "1" : "Inverted"], required: false, displayDuringSetup: true, defaultValue: "0"
-		input name: "paramThreeWayType", type: "enum", title: "(5) 3-Way Add-On Switch [700S/800S only]", multiple: false, options: ["0" : "Off (default)", "1" : "On"], required: false, displayDuringSetup: true, defaultValue: "0"
-        input name: "paramAlternateExclusion", type: "enum", title: "(19) Enable alternate exclusion (2-ON, 2-OFF)", multiple: false, options: ["0" : "OFF (default)", "1" : "ON"], required: false, displayDuringSetup: true, defaultValue: "0"
+        input name: "paramThreeWayType", type: "enum", title: "(5) 3-Way Type [700S/800S only]", multiple: false, options: ["0" : "Add-On Switch (default)", "1" : "Standard 3-Way Switch"], required: false, displayDuringSetup: true, defaultValue: "0"
+        input name: "paramAlternateExclusion", type: "enum", title: "(19) Alternate Exclusion", multiple: false, options: ["0" : "Single paddle press (default)", "1" : "Alternate exclusion sequence / menu"], required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "paramLEDColor", type: "enum", title: "(34) LED Light Color [color LED models only]", multiple: false, options: ["1" : "Red", "2" : "Orange", "3" : "Yellow", "4" : "Green", "5" : "Blue (default)", "6" : "Pink", "7" : "Purple", "8" : "White"], required: false, displayDuringSetup: true, defaultValue: "5"
-        input name: "paramIntensity", type: "enum", title: "(35) LED Intensity [color LED models only]", multiple: false, options: ["0" : "0 - Off","1" : "1", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7"], required: false, displayDuringSetup: true, defaultValue: "4"
+        input name: "paramIntensity", type: "enum", title: "(35) LED Intensity [color LED models only]", multiple: false, options: ["1" : "1 (lowest)", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7 (highest)"], required: false, displayDuringSetup: true, defaultValue: "4"
         // FIX 2026-11-12 F2: typo Intesity -> Intensity
-        input name: "paramGuidelightIntensity", type: "enum", title: "(36) Guidelight Intensity [color LED models only]", multiple: false, options: ["0" : "0 - Off","1" : "1", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7"], required: false, displayDuringSetup: true, defaultValue: "4"
-        input name: "requestedGroup2", type: "text", title: "Association Group 2 Members (Max of 5):", required: false
-        input name: "requestedGroup3", type: "text", title: "Association Group 3 Members (Max of 4):", required: false
+        input name: "paramGuidelightIntensity", type: "enum", title: "(36) Guidelight Intensity [color LED models only]", multiple: false, options: ["1" : "1 (lowest)", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7 (highest)"], required: false, displayDuringSetup: true, defaultValue: "4"
+        input name: "paramRelayControl", type: "enum", title: "(39) Relay Control [700S/800S only]", multiple: false, options: ["0" : "Paddle controls relay (default)", "1" : "Smart bulb mode — relay always OFF, line power always ON (use with care)"], required: false, displayDuringSetup: true, defaultValue: "0"
+        input name: "requestedGroup2", type: "text", title: "Association Group 2 Members (device-reported max; typically 5):", required: false
+        input name: "requestedGroup3", type: "text", title: "Association Group 3 Members (hub + extras; device-reported max minus hub):", required: false
         input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false
 	    input name: "logDesc", type: "bool", title: "Enable descriptionText logging", defaultValue: true
     }
@@ -218,6 +239,7 @@ private void storeProfile(String key, Map profile, String source = "auto") {
     updateDataValue("profileSource", source ?: "")
     updateDataValue("profileColorLed", profile?.colorLed ? "true" : "false")
     updateDataValue("profileThreeWay", profile?.threeWay ? "true" : "false")
+    updateDataValue("driverVersion", DRIVER_VERSION)
 }
 
 // Detect (or force) the profile and store it in state + Data Values
@@ -320,6 +342,11 @@ def zwaveEvent(hubitat.zwave.commands.basicv1.BasicSet cmd) {
 
 def zwaveEvent(hubitat.zwave.commands.associationv2.AssociationReport cmd) {
 	if (logEnable) log.debug "---ASSOCIATION REPORT V2--- ${device.displayName} sent groupingIdentifier: ${cmd.groupingIdentifier} maxNodesSupported: ${cmd.maxNodesSupported} nodeId: ${cmd.nodeId} reportsToFollow: ${cmd.reportsToFollow}"
+	if (cmd.maxNodesSupported != null) {
+		Integer maxN = cmd.maxNodesSupported as Integer
+		state["assocMaxGroup${cmd.groupingIdentifier}"] = maxN
+		updateDataValue("assocMaxGroup${cmd.groupingIdentifier}", maxN.toString())
+	}
     if (cmd.groupingIdentifier == 3) {
     	if (cmd.nodeId.contains(zwaveHubNodeId)) {
         	sendEvent(name: "numberOfButtons", value: 6, displayed: false)
@@ -335,12 +362,27 @@ def zwaveEvent(hubitat.zwave.commands.associationv2.AssociationReport cmd) {
 }
 
 def zwaveEvent(hubitat.zwave.commands.configurationv2.ConfigurationReport cmd) {
-	if (logEnable) log.debug "---CONFIGURATION REPORT V2--- ${device.displayName} sent ${cmd}"
+	handleConfigurationReport(cmd)
 }
 
 // FIX 2026-11-12 F3: 700S/800S profiles use Configuration CC v4; handle v4 reports
 def zwaveEvent(hubitat.zwave.commands.configurationv4.ConfigurationReport cmd) {
-	if (logEnable) log.debug "---CONFIGURATION REPORT V4--- ${device.displayName} sent ${cmd}"
+	handleConfigurationReport(cmd)
+}
+
+private void handleConfigurationReport(cmd) {
+	Integer param = cmd.parameterNumber as Integer
+	Integer value = cmd.scaledConfigurationValue as Integer
+	if (logEnable) log.debug "---CONFIGURATION REPORT--- ${device.displayName} param ${param} = ${value}"
+	def row = PARAM_PREFS.find { it.num == param }
+	if (!row) return
+	String val = value.toString()
+	// Number-style prefs (dimmer thresholds / default level); everything else is enum
+	if (param in [20, 30, 31, 32]) {
+		device.updateSetting(row.setting, [type: "number", value: val])
+	} else {
+		device.updateSetting(row.setting, [type: "enum", value: val])
+	}
 }
 
 private void handleSwitchBinaryReport(cmd) {
@@ -485,6 +527,10 @@ def zwaveEvent(hubitat.zwave.commands.centralscenev1.CentralSceneNotification cm
     return result
 }
 
+def zwaveEvent(hubitat.zwave.commands.indicatorv3.IndicatorReport cmd) {
+	if (logEnable) log.debug "IndicatorReport: ${cmd}"
+}
+
 def zwaveEvent(hubitat.zwave.Command cmd) {
     log.warn "${device.displayName} received unhandled command: ${cmd}"
 }
@@ -529,6 +575,7 @@ def refresh() {
 }
 
 def installed() {
+	updateDataValue("driverVersion", DRIVER_VERSION)
 	configure()
 }
 
@@ -662,7 +709,15 @@ private parseAssocGroupList(list, group) {
     def nodes = group == 2 ? [] : [zwaveHubNodeId]
     if (list) {
         def nodeList = list.split(',')
-        def max = group == 2 ? 5 : 4
+        Integer reported = state["assocMaxGroup${group}"] as Integer
+        // Group 2: all slots are user nodes. Group 3: hub occupies one slot for button reports.
+        def max
+        if (group == 2) {
+            max = reported ?: 5
+        } else {
+            Integer supported = reported ?: 5
+            max = Math.max(0, supported - 1)
+        }
         def count = 0
 
         nodeList.each { node ->
@@ -690,6 +745,89 @@ private parseAssocGroupList(list, group) {
     }
 	if (logEnable) log.debug "Nodes is $nodes"
     return nodes
+}
+
+
+def setRelayControl(mode) {
+	Map profile = currentProfile()
+	if (!profile.relayControl || !supportsParam(profile, 39)) {
+		log.warn "setRelayControl ignored: ${profile.name} does not support param 39"
+		return
+	}
+	String m = mode?.toString()
+	int val
+	if (m in ["1", "Smart bulb mode", "Smart bulb mode — relay always off, power always on"]) {
+		val = 1
+	} else if (m in ["0", "Paddle controls relay", "Paddle controls relay (default)"]) {
+		val = 0
+	} else {
+		log.warn "setRelayControl: invalid mode '${mode}'"
+		return
+	}
+	if (val == 1) {
+		log.warn "${device.displayName}: enabling smart-bulb mode (param 39=1). Relay stays OFF and line power stays ON — paddle will not switch the load."
+	} else {
+		log.info "${device.displayName}: paddle controls relay (param 39=0)"
+	}
+	device.updateSetting("paramRelayControl", [type: "enum", value: val.toString()])
+	delayBetween([
+		cfgSet(profile, 39, val),
+		cfgGet(profile, 39)
+	], 250)
+}
+
+def getParameter(paramNum) {
+	Map profile = currentProfile()
+	int p = paramNum as Integer
+	log.info "getParameter(${p})"
+	delayBetween([cfgGet(profile, p)], 250)
+}
+
+def setParameter(paramNum, value) {
+	Map profile = currentProfile()
+	int p = paramNum as Integer
+	int v = value as Integer
+	if (p == 84) {
+		log.warn "setParameter: use factoryResetDevice(RESET) for param 84"
+		return
+	}
+	log.info "setParameter(${p}, ${v})"
+	delayBetween([
+		cfgSet(profile, p, v),
+		cfgGet(profile, p)
+	], 250)
+}
+
+def identify(unused = null) {
+	Map profile = currentProfile()
+	if (!(profile.generation in ["700S", "800S"])) {
+		log.warn "identify: Indicator CC is primarily supported on 700S/800S (${profile.name})"
+	}
+	log.info "${device.displayName}: identify (Indicator blink)"
+	List indicators = [
+		[indicatorId: 0x50, propertyId: 0x03, value: 0x08],
+		[indicatorId: 0x50, propertyId: 0x04, value: 0x03],
+		[indicatorId: 0x50, propertyId: 0x05, value: 0x06]
+	]
+	delayBetween([
+		secure(zwave.indicatorV3.indicatorSet(indicatorCount: 3, value: 0, indicatorValues: indicators).format())
+	], 250)
+}
+
+def factoryResetDevice(confirm) {
+	if (confirm?.toString() != "RESET") {
+		log.warn "factoryResetDevice aborted: select RESET to confirm"
+		return
+	}
+	Map profile = currentProfile()
+	if (!(profile.generation in ["700S", "800S"])) {
+		log.warn "factoryResetDevice: param 84 is not available on ${profile.name} (${profile.generation})"
+		return
+	}
+	log.warn "${device.displayName}: sending Z-Wave factory reset (param 84=1). Device will leave the network and need re-inclusion."
+	delayBetween([
+		cfgSet(profile, 84, 1)
+	], 250)
 }
 
 def logsOff(){
