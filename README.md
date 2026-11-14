@@ -21,7 +21,7 @@ Once this repository is merged into the [HubitatCommunity packagerepositories](h
 
 Two profile-driven drivers (Switch and Dimmer) that auto-detect the model from Z-Wave `productType` + `productId` and **only write configuration parameters that model supports**. Preferences for unsupported features still appear in the UI but are ignored on Save.
 
-Detected identity is stored in device **Data Values**: `profileKey`, `profileName`, `profileGeneration`, `profileSource`, `profileColorLed`, `profileThreeWay` (and mirrored in driver state).
+Detected identity is stored in device **Data Values**: `profileKey`, `profileName`, `profileGeneration`, `profileSource`, `profileColorLed`, `profileThreeWay`, plus `driverVersion` (and mirrored in driver state). Association group max-node counts from the device are stored as `assocMaxGroup2` / `assocMaxGroup3` when reported.
 
 **Credit:** Based on Jason Bottjen ([Botched1](https://github.com/Botched1/Hubitat)) GE Enbrighten Switch/Dimmer drivers.
 
@@ -38,7 +38,9 @@ Detected identity is stored in device **Data Values**: `profileKey`, `profileNam
 | Generation | Brand / model | SKU examples | Profile key | Params written |
 |------------|---------------|--------------|-------------|----------------|
 | **500S** | Enbrighten / Jasco / UltraPro **ZW4008** (paddle) | 46201, 46562, 39348 | `4952-3135` / `3136` / `3237` | 3, 4, 19 |
+| **500S** | Enbrighten **ZW4008DV** (120+277) | 43072 | `4952-3139` | 3, 4, 19 |
 | **500S** | Enbrighten / Jasco / UltraPro **ZW4009** (toggle) | 46202, 46563, 39354 | `4952-3137` / `3138` / `3238` | 3, 4, 19 |
+| **500S** | Enbrighten **ZW4009DV** (120+277) | 43074 | `4952-3231` | 3, 4, 19 |
 | **700S** | Enbrighten / Jasco / UltraPro **ZWA4011** (+ DV) | 58433, 59337, 59381, 59347 | `4952-3239` / `3331` / `3335` / `3333` | 3, 4, 5, 19, 34–36, 39 |
 | **700S** | Enbrighten / Jasco / UltraPro **ZWA4012** (+ DV) | 58436, 59338, 59382, 59368 | `4952-3330` / `3332` / `3336` / `3334` | 3, 4, 5, 19, 34–36, 39 |
 | **800S** | Enbrighten / Jasco **ZWN4015** | 76591, 76596 | `4952-3435` / `3437` | 3, 4, 5, 19, 34–36, 39 |
@@ -50,6 +52,7 @@ Detected identity is stored in device **Data Values**: `profileKey`, `profileNam
 | Generation | Brand / model | SKU examples | Profile key | Params written |
 |------------|---------------|--------------|-------------|----------------|
 | **500S** | Enbrighten / Jasco / UltraPro **ZW3010** | 46203, 46564, 39351 | `4944-3235` / `3236` / `3339` | 3, 4, 6, 16, 19, 30–32 |
+| **500S** | Enbrighten **ZW3010DV** (120+277) | 43105 | `4944-3330` | 3, 6, 16, 19, **20**, 32 |
 | **500S** | Enbrighten / Jasco **ZW3011** | 46204, 46565 | `4944-3237` / `3238` | 3, 4, 6, 16, 19, 30–32 |
 | **700S** | Enbrighten / Jasco / UltraPro **ZWA3016** | 58438, 59383, 59350 | `4944-3430` / `3434` / `3433` | 3, 4, 5, 16, 19, 30–32, 34–36 |
 | **700S** | Enbrighten / Jasco **ZWA3017** | 59341, 59384 | `4944-3431` / `3435` | 3, 4, 5, 16, 19, 30–32, 34–36 |
@@ -71,7 +74,8 @@ Detected identity is stored in device **Data Values**: `profileKey`, `profileNam
 | **6** | Dim up/down rate | **500S dimmer only** | `0` fast ramp (default); `1` slow ramp (Z-Wave level changes other than 0/FF) |
 | **16** | Switch Mode | Dimmers | `0` dimmer mode (default); `1` on/off switch mode (levels map to full on) |
 | **19** | Alternate Exclusion | All | `0` exclude with a single paddle press (default); `1` alternate exclusion sequence / menu (model-dependent) |
-| **30** | Minimum Dim Threshold | Dimmers | `1`–`99` % lowest level the dimmer will use |
+| **20** | Minimum Dim Threshold | **ZW3010DV only** | Same meaning as param 30; this SKU uses param **20** instead |
+| **30** | Minimum Dim Threshold | Dimmers (except ZW3010DV) | `1`–`99` % lowest level the dimmer will use |
 | **31** | Maximum Brightness Threshold | Dimmers | `1`–`99` % highest level the dimmer will use |
 | **32** | Default ON % | Dimmers | `0` restore last level (default); `1`–`99` always turn on to that % |
 | **34** | LED Light Color | Color LED models | `1` Red … `5` Blue (default) … `8` White |
@@ -79,7 +83,7 @@ Detected identity is stored in device **Data Values**: `profileKey`, `profileNam
 | **36** | Guidelight Intensity | Color LED models | Brightness of the indicator when param 3 is guidelight mode; `1`–`7`, default `4` |
 | **39** | Relay Control | **700S/800S switches** | `0` paddle controls relay (default); `1` **smart bulb mode** — relay stays off, line power stays on (use with care) |
 
-Param **84** (Z-Wave factory reset) exists on some 700S/800S manuals but is **not** exposed by these drivers.
+Param **84** (Z-Wave factory reset) on **700S/800S** is exposed only via the `factoryResetDevice(RESET)` command (not a sticky preference), so it cannot be triggered accidentally by Save.
 
 ---
 
@@ -94,10 +98,15 @@ Param **84** (Z-Wave factory reset) exists on some 700S/800S manuals but is **no
 | `configure` | Associations + button setup; re-resolves profile |
 | `setIndicatorBehavior` | Sets param **3** (same options as the preference) |
 | `setLedColor` | Sets param **34** on color-LED models; ignored otherwise |
+| `setRelayControl` | **Switch only** — sets param **39** (paddle vs smart-bulb mode); warns on smart-bulb |
+| `getParameter` / `setParameter` | Read/write any config param (debug); param **84** is blocked — use `factoryResetDevice` |
+| `identify` | Indicator CC blink (primarily 700S/800S) |
+| `factoryResetDevice` | Writes param **84=1** on 700S/800S after selecting **RESET**; device leaves the network |
 | Central Scene buttons | Up/Down: push (1/2), hold (1/2), release (1/2), double (3/4), triple (5/6); also `doubleTapped` 1/2 |
 | Association group 1 | Lifeline (hub) |
-| Association group 2 | Single-press Basic Set to listed nodes (max 5) |
-| Association group 3 | Double-press Basic Set; includes hub for button reports (max 4 extra) |
+| Association group 2 | Single-press Basic Set to listed nodes (device-reported max; typically 5) |
+| Association group 3 | Double-press Basic Set; includes hub for button reports (device-reported max minus hub) |
+| Config reports → prefs | After refresh/`updated`, reported values sync into preferences so the UI matches the device |
 
 **Dimmer only**
 
