@@ -17,6 +17,8 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  1.0.4 (2026-11-16) - Hover tooltips on non-obvious preferences (3-way, exclusion,
+ *                       associations, profile override, switch mode, min dim, guidelight).
  *  1.0.3 (2026-11-14) - ConfigReport syncs preferences; association maxNodes from reports;
  *                       driverVersion Data Value; ZW3010DV fingerprint (param 20 min dim);
  *                       getParameter/setParameter, identify (Indicator CC);
@@ -61,7 +63,18 @@
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "1.0.3"
+@Field static final String DRIVER_VERSION = "1.0.4"
+
+// Preference hover tips (Hubitat has no native tooltip on inputs — CSS + title HTML).
+@Field static final String PREF_TIP_CSS = "<style>.tTip{display:inline-block;border-bottom:1px dotted currentColor;cursor:help}.tTip .tTipText{display:none;position:absolute;z-index:20;max-width:22rem;margin-top:.35rem;padding:.5rem .65rem;border-radius:6px;background:#222;color:#fff;font-weight:400;font-size:12px;line-height:1.35;white-space:normal}.tTip:hover .tTipText{display:block}</style>"
+@Field static final String TIP_FORCE_PROFILE = "<div class='tTip'>Device Profile Override<span class='tTipText'>Leave Auto-detect unless the wrong model was detected. Override forces which parameter set is written; it does not change the physical device.</span></div>"
+@Field static final String TIP_THREE_WAY = "<div class='tTip'>(5) 3-Way Type [700S/800S only]<span class='tTipText'>Add-On Switch: use with a Jasco/GE add-on (companion) paddle that talks to this smart dimmer. Standard 3-Way: use when the other switch is a plain mechanical 3-way. Wrong setting breaks multi-location control. Ignored on 500S / non-3-way models.</span></div>"
+@Field static final String TIP_SWITCH_MODE = "<div class='tTip'>(16) Switch Mode<span class='tTipText'>Dimmer mode: full level control. On/Off switch mode: device behaves like a binary switch (no dimming) — useful for non-dimmable loads on a dimmer SKU.</span></div>"
+@Field static final String TIP_ALT_EXCLUSION = "<div class='tTip'>(19) Alternate Exclusion<span class='tTipText'>How the device enters Z-Wave exclusion (remove) mode from the paddle. Leave Single paddle press unless the hub cannot exclude the device the normal way.</span></div>"
+@Field static final String TIP_MIN_DIM = "<div class='tTip'>(30/20) Minimum Dim Threshold<span class='tTipText'>Lowest level the dimmer will go (1–99%). Raise this if LEDs flicker or drop out near the bottom. ZW3010DV uses param 20; other models use param 30 — the driver picks the right one from the profile.</span></div>"
+@Field static final String TIP_GUIDELIGHT = "<div class='tTip'>(36) Guidelight Intensity [color LED models only]<span class='tTipText'>Brightness of the status LED when it is acting as a nightlight / locator (typically when the load is OFF, depending on LED Indicator Behavior). Separate from (35) LED Intensity.</span></div>"
+@Field static final String TIP_ASSOC2 = "<div class='tTip'>Association Group 2 Members<span class='tTipText'>Direct Z-Wave control targets (hex node IDs, space or comma separated). Group 2 is typically mirrored with this dimmer. Max members is device-reported (often 5). Do not add the hub.</span></div>"
+@Field static final String TIP_ASSOC3 = "<div class='tTip'>Association Group 3 Members<span class='tTipText'>Extra association targets (hex node IDs). Hub is already associated separately; leave room under the device-reported max. Advanced — leave blank unless you need device-to-device links.</span></div>"
 
 // Base command class versions (700S / 800S). 500S profiles are downgraded in ccVersions().
 @Field static Map commandClassVersions = 
@@ -166,23 +179,23 @@ metadata {
 }
 
  preferences {
-        input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: "All settings are listed for every model. Settings your dimmer does not support (for example color LED options on non-color models, or ramp rate on 700S/800S) are ignored and never written to the device. The detected model is stored in device Data Values (profileKey, profileName, profileGeneration) and in state."
-        input name: "forceProfile", type: "enum", title: "Device Profile Override", multiple: false, options: ["auto" : "Auto-detect (default)", "4944-3235" : "4944-3235 Enbrighten ZW3010 / 46203 [500S]", "4944-3236" : "4944-3236 Jasco ZW3010 / 46564 [500S]", "4944-3339" : "4944-3339 UltraPro ZW3010 / 39351 [500S]", "4944-3237" : "4944-3237 Enbrighten ZW3011 / 46204 [500S]", "4944-3238" : "4944-3238 Jasco ZW3011 / 46565 [500S]", "4944-3330" : "4944-3330 Enbrighten ZW3010DV / 43105 [500S]", "4944-3430" : "4944-3430 Enbrighten ZWA3016 / 58438 [700S]", "4944-3431" : "4944-3431 Enbrighten ZWA3017 / 59341 [700S]", "4944-3434" : "4944-3434 Jasco ZWA3016 / 59383 [700S]", "4944-3435" : "4944-3435 Jasco ZWA3017 / 59384 [700S]", "4944-3433" : "4944-3433 UltraPro ZWA3016 / 59350 [700S]", "4944-3537" : "4944-3537 Enbrighten ZWN3018 / 76593 [800S]", "4944-3630" : "4944-3630 Enbrighten ZWN3019 / 76595 [800S]", "4944-3539" : "4944-3539 Jasco ZWN3018 / 76597 [800S]", "4944-3631" : "4944-3631 Jasco ZWN3019 / 76599 [800S]", "4944-3538" : "4944-3538 UltraPro ZWN3020 / 76602 [800S]"], required: false, displayDuringSetup: true, defaultValue: "auto"
+        input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: PREF_TIP_CSS + "All settings are listed for every model. Settings your dimmer does not support (for example color LED options on non-color models, or ramp rate on 700S/800S) are ignored and never written to the device. The detected model is stored in device Data Values (profileKey, profileName, profileGeneration) and in state. Dotted labels below show extra help on hover."
+        input name: "forceProfile", type: "enum", title: TIP_FORCE_PROFILE, multiple: false, options: ["auto" : "Auto-detect (default)", "4944-3235" : "4944-3235 Enbrighten ZW3010 / 46203 [500S]", "4944-3236" : "4944-3236 Jasco ZW3010 / 46564 [500S]", "4944-3339" : "4944-3339 UltraPro ZW3010 / 39351 [500S]", "4944-3237" : "4944-3237 Enbrighten ZW3011 / 46204 [500S]", "4944-3238" : "4944-3238 Jasco ZW3011 / 46565 [500S]", "4944-3330" : "4944-3330 Enbrighten ZW3010DV / 43105 [500S]", "4944-3430" : "4944-3430 Enbrighten ZWA3016 / 58438 [700S]", "4944-3431" : "4944-3431 Enbrighten ZWA3017 / 59341 [700S]", "4944-3434" : "4944-3434 Jasco ZWA3016 / 59383 [700S]", "4944-3435" : "4944-3435 Jasco ZWA3017 / 59384 [700S]", "4944-3433" : "4944-3433 UltraPro ZWA3016 / 59350 [700S]", "4944-3537" : "4944-3537 Enbrighten ZWN3018 / 76593 [800S]", "4944-3630" : "4944-3630 Enbrighten ZWN3019 / 76595 [800S]", "4944-3539" : "4944-3539 Jasco ZWN3018 / 76597 [800S]", "4944-3631" : "4944-3631 Jasco ZWN3019 / 76599 [800S]", "4944-3538" : "4944-3538 UltraPro ZWN3020 / 76602 [800S]"], required: false, displayDuringSetup: true, defaultValue: "auto"
         input name: "paramLED", type: "enum", title: "(3) LED Indicator Behavior", multiple: false, options: ["0" : "LED ON When Switch OFF (default)", "1" : "LED ON When Switch ON", "2" : "LED Always OFF", "3" : "LED Always ON"], required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "paramInverted", type: "enum", title: "(4) Switch Buttons Direction", multiple: false, options: ["0" : "Normal (default)", "1" : "Inverted"], required: false, displayDuringSetup: true, defaultValue: "0"
-		input name: "paramThreeWayType", type: "enum", title: "(5) 3-Way Type [700S/800S only]", multiple: false, options: ["0" : "Add-On Switch (default)", "1" : "Standard 3-Way Switch"], required: false, displayDuringSetup: true, defaultValue: "0"
+		input name: "paramThreeWayType", type: "enum", title: TIP_THREE_WAY, multiple: false, options: ["0" : "Add-On Switch (default)", "1" : "Standard 3-Way Switch"], required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "paramUpDownRate", type: "enum", title: "(6) Dim up/down rate [500S only]", multiple: false, options: ["0" : "Fast (default)", "1" : "Slow"], required: false, displayDuringSetup: true, defaultValue: "0" //DIMMER
-        input name: "paramSwitchMode", type: "enum", title: "(16) Switch Mode", multiple: false, options: ["0" : "Dimmer mode (default)", "1" : "On/Off switch mode"], required: false, displayDuringSetup: true, defaultValue: "0" //DIMMER
-		input name: "paramAlternateExclusion", type: "enum", title: "(19) Alternate Exclusion", multiple: false, options: ["0" : "Single paddle press (default)", "1" : "Alternate exclusion sequence / menu"], required: false, displayDuringSetup: true, defaultValue: "0"
-		input name: "paramMinDim", type: "number", title: "(30/20) Minimum Dim Threshold (1-99%; param 20 on ZW3010DV)", multiple: false, range: "1..99", required: false, displayDuringSetup: true, defaultValue: "1" //DIMMER
+        input name: "paramSwitchMode", type: "enum", title: TIP_SWITCH_MODE, multiple: false, options: ["0" : "Dimmer mode (default)", "1" : "On/Off switch mode"], required: false, displayDuringSetup: true, defaultValue: "0" //DIMMER
+		input name: "paramAlternateExclusion", type: "enum", title: TIP_ALT_EXCLUSION, multiple: false, options: ["0" : "Single paddle press (default)", "1" : "Alternate exclusion sequence / menu"], required: false, displayDuringSetup: true, defaultValue: "0"
+		input name: "paramMinDim", type: "number", title: TIP_MIN_DIM, multiple: false, range: "1..99", required: false, displayDuringSetup: true, defaultValue: "1" //DIMMER
         input name: "paramMaxDim", type: "number", title: "(31) Maximum Brightness Threshold (1-99%)", multiple: false, range: "1..99", required: false, displayDuringSetup: true, defaultValue: "99" //DIMMER
         input name: "paramDefaultDim", type: "number", title: "(32) Default ON % (0 = last level)", multiple: false, range: "0..99", required: false, displayDuringSetup: true, defaultValue: "0"
         input name: "paramLEDColor", type: "enum", title: "(34) LED Light Color [color LED models only]", multiple: false, options: ["1" : "Red", "2" : "Orange", "3" : "Yellow", "4" : "Green", "5" : "Blue (default)", "6" : "Pink", "7" : "Purple", "8" : "White"], required: false, displayDuringSetup: true, defaultValue: "5"
         input name: "paramIntensity", type: "enum", title: "(35) LED Intensity [color LED models only]", multiple: false, options: ["1" : "1 (lowest)", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7 (highest)"], required: false, displayDuringSetup: true, defaultValue: "4"
         // FIX 2026-11-12 F2: typo Intesity -> Intensity
-        input name: "paramGuidelightIntensity", type: "enum", title: "(36) Guidelight Intensity [color LED models only]", multiple: false, options: ["1" : "1 (lowest)", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7 (highest)"], required: false, displayDuringSetup: true, defaultValue: "4"
-        input name: "requestedGroup2", type: "text", title: "Association Group 2 Members (device-reported max; typically 5):", required: false
-        input name: "requestedGroup3", type: "text", title: "Association Group 3 Members (hub + extras; device-reported max minus hub):", required: false
+        input name: "paramGuidelightIntensity", type: "enum", title: TIP_GUIDELIGHT, multiple: false, options: ["1" : "1 (lowest)", "2" : "2", "3" : "3", "4" : "4 (default)", "5" : "5", "6" : "6", "7" : "7 (highest)"], required: false, displayDuringSetup: true, defaultValue: "4"
+        input name: "requestedGroup2", type: "text", title: TIP_ASSOC2, required: false
+        input name: "requestedGroup3", type: "text", title: TIP_ASSOC3, required: false
         input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false
 	    input name: "logDesc", type: "bool", title: "Enable descriptionText logging", defaultValue: true
     }
