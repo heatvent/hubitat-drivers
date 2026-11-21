@@ -4,6 +4,9 @@
 - every driver/package `location` on this repo points to a file that exists
 - each manifest `version` matches DRIVER_VERSION in the drivers it lists
 - each driver's importUrl (if set) points at its own path
+- every .groovy file under Drivers/ has balanced { } ( ) [ ] outside strings and
+  comments (a stray brace makes the hub refuse the upload, and HPM then reports
+  only "Failed to upgrade driver")
 """
 
 from __future__ import annotations
@@ -19,6 +22,56 @@ VERSION = re.compile(r'DRIVER_VERSION\s*=\s*"([^"]+)"')
 IMPORT_URL = re.compile(r'importUrl:\s*"([^"]+)"')
 
 errors: list[str] = []
+
+
+PAIRS = {"}": "{", ")": "(", "]": "["}
+
+
+def unbalanced(text: str) -> str | None:
+    """First bracket problem in Groovy source, skipping strings and comments."""
+    stack: list[tuple[str, int]] = []
+    i, line, n = 0, 1, len(text)
+    while i < n:
+        c = text[i]
+        if c == "\n":
+            line += 1
+        elif text.startswith("//", i):
+            i = text.find("\n", i)
+            if i < 0:
+                break
+            continue
+        elif text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            end = n if end < 0 else end + 2
+            line += text.count("\n", i, end)
+            i = end
+            continue
+        elif c in "'\"":
+            quote = text[i:i + 3] if text[i:i + 3] in ("'''", '"""') else c
+            j = i + len(quote)
+            while j < n and not text.startswith(quote, j):
+                j += 2 if text[j] == "\\" else 1
+            end = min(n, j + len(quote))
+            line += text.count("\n", i, end)
+            i = end
+            continue
+        elif c in "{([":
+            stack.append((c, line))
+        elif c in "})]":
+            if not stack or stack[-1][0] != PAIRS[c]:
+                return f"unexpected '{c}' on line {line}"
+            stack.pop()
+        i += 1
+    if stack:
+        c, opened = stack[-1]
+        return f"'{c}' opened on line {opened} is never closed"
+    return None
+
+
+for groovy in sorted((ROOT / "Drivers").rglob("*.groovy")):
+    problem = unbalanced(groovy.read_text(encoding="utf-8-sig"))
+    if problem:
+        errors.append(f"{groovy.relative_to(ROOT)}: {problem}")
 
 
 def local(url: str) -> Path | None:
