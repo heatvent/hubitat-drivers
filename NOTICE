@@ -1,0 +1,11 @@
+Heatvent Hubitat Drivers
+Copyright 2026 Heatvent
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The GE/Jasco Enbrighten Switch (Multi) and Dimmer (Multi) drivers are modified
+versions of the "GE Enbrighten Z-Wave Plus" switch and dimmer drivers by
+Jason Bottjen (Botched1), https://github.com/Botched1/Hubitat, licensed under
+the Apache License, Version 2.0. Changes: multi-model (500S/700S/800S) profile
+detection and per-model configuration parameters, among others listed in each
+driver's change log.

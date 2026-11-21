@@ -136,7 +136,7 @@ import groovy.transform.Field
 @Field static Map LED_COLORS = ["Red": 1, "Orange": 2, "Yellow": 3, "Green": 4, "Blue": 5, "Pink": 6, "Purple": 7, "White": 8]
 
 metadata {
-	definition (name: "GE/Jasco Enbrighten Dimmer (Multi)", namespace: "Heatvent", author: "Heatvent") {
+	definition (name: "GE/Jasco Enbrighten Dimmer (Multi)", namespace: "Heatvent", author: "Heatvent", importUrl: "https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/Drivers/GE-Jasco-Enbrighten-Dimmer-Multi/GE-Jasco-Enbrighten-Dimmer-Multi.groovy") {
 		capability "Actuator"
         capability "DoubleTapableButton"
         capability "HoldableButton"
