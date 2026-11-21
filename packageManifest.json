@@ -1,10 +1,10 @@
 {
   "packageName": "GE/Jasco Enbrighten Switch & Dimmer (Multi)",
   "author": "Heatvent",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "minimumHEVersion": "2.2.3",
-  "dateReleased": "2026-11-16",
-  "releaseNotes": "v1.0.4 - Hover tooltips on non-obvious preferences (3-way, exclusion, relay/smart-bulb, associations, profile override, guidelight; dimmer also switch-mode + min dim).\nv1.0.3 - ConfigReport syncs prefs; association maxNodes from device; driverVersion Data Value; DV fingerprints; setRelayControl / get|setParameter / identify; factoryResetDevice (param 84) on 700S/800S.\nv1.0.2 - Live Config-Get verification: 500S dimmer min/max (30/31), switch relay control (39), drop unsupported 700S/800S ramp (6), clearer preference labels.\nv1.0.1 - Persist detected profile to device Data Values; author normalized to Heatvent.\nv1.0.0 - Initial multi-model Switch and Dimmer drivers (500S/700S/800S) with profile auto-detect.",
+  "dateReleased": "2026-11-21",
+  "releaseNotes": "v1.0.5 - importUrl in both driver definitions (Hubitat Import button can refresh them); Apache-2.0 LICENSE/NOTICE.\nv1.0.4 - Hover tooltips on non-obvious preferences (3-way, exclusion, relay/smart-bulb, associations, profile override, guidelight; dimmer also switch-mode + min dim).\nv1.0.3 - ConfigReport syncs prefs; association maxNodes from device; driverVersion Data Value; DV fingerprints; setRelayControl / get|setParameter / identify; factoryResetDevice (param 84) on 700S/800S.\nv1.0.2 - Live Config-Get verification: 500S dimmer min/max (30/31), switch relay control (39), drop unsupported 700S/800S ramp (6), clearer preference labels.\nv1.0.1 - Persist detected profile to device Data Values; author normalized to Heatvent.\nv1.0.0 - Initial multi-model Switch and Dimmer drivers (500S/700S/800S) with profile auto-detect.",
   "documentationLink": "https://github.com/heatvent/hubitat-drivers",
   "communityLink": "",
   "category": "Control",
