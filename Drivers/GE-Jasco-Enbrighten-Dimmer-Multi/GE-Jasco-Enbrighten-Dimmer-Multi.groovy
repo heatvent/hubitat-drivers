@@ -17,8 +17,9 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
- *  1.0.5 (2026-11-21) - importUrl in the driver definition so Hubitat's Import button
- *                       can refresh it; Apache-2.0 LICENSE/NOTICE added to the repo.
+ *  1.0.6 (2026-11-21) - importUrl in the driver definition so Hubitat's Import button can
+ *                       refresh it.
+ *  1.0.5 (2026-11-21) - Handle Basic Report v1/v2 at debug level (was logged as an unhandled warning)
  *  1.0.4 (2026-11-16) - Hover tooltips on non-obvious preferences (3-way, exclusion,
  *                       associations, profile override, switch mode, min dim, guidelight).
  *  1.0.3 (2026-11-14) - ConfigReport syncs preferences; association maxNodes from reports;
@@ -65,7 +66,7 @@
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "1.0.5"
+@Field static final String DRIVER_VERSION = "1.0.6"
 
 // Preference hover tips (Hubitat has no native tooltip on inputs — CSS + title HTML).
 @Field static final String PREF_TIP_CSS = "<style>.tTip{display:inline-block;border-bottom:1px dotted currentColor;cursor:help}.tTip .tTipText{display:none;position:absolute;z-index:20;max-width:22rem;margin-top:.35rem;padding:.5rem .65rem;border-radius:6px;background:#222;color:#fff;font-weight:400;font-size:12px;line-height:1.35;white-space:normal}.tTip:hover .tTipText{display:block}</style>"
@@ -579,6 +580,18 @@ def zwaveEvent(hubitat.zwave.commands.centralscenev1.CentralSceneNotification cm
 
 def zwaveEvent(hubitat.zwave.commands.indicatorv3.IndicatorReport cmd) {
 	if (logEnable) log.debug "IndicatorReport: ${cmd}"
+}
+
+def zwaveEvent(hubitat.zwave.commands.basicv1.BasicReport cmd) {
+    // FIX 2026-11-21 F11: Basic Report is sent alongside the switch/level report; the state is
+    // already handled there, so log at debug instead of falling through to the unhandled warning.
+    if (logEnable) log.debug "---BASIC REPORT V1--- ${device.displayName} sent ${cmd}"
+}
+
+def zwaveEvent(hubitat.zwave.commands.basicv2.BasicReport cmd) {
+    // FIX 2026-11-21 F11: Basic Report is sent alongside the switch/level report; the state is
+    // already handled there, so log at debug instead of falling through to the unhandled warning.
+    if (logEnable) log.debug "---BASIC REPORT V2--- ${device.displayName} sent ${cmd}"
 }
 
 def zwaveEvent(hubitat.zwave.Command cmd) {

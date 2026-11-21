@@ -17,8 +17,10 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
- *  1.0.5 (2026-11-21) - importUrl in the driver definition so Hubitat's Import button
- *                       can refresh it; Apache-2.0 LICENSE/NOTICE added to the repo.
+ *  1.0.6 (2026-11-21) - importUrl in the driver definition so Hubitat's Import button can
+ *                       refresh it; remove a duplicated `preferences {` line that
+ *                       kept the published file from compiling.
+ *  1.0.5 (2026-11-21) - Handle Basic Report v1/v2 at debug level (was logged as an unhandled warning)
  *  1.0.4 (2026-11-16) - Hover tooltips on non-obvious preferences (3-way, exclusion, relay,
  *                       associations, profile override, guidelight); keep titles short.
  *  1.0.3 (2026-11-14) - ConfigReport syncs preferences; association maxNodes from reports;
@@ -59,7 +61,7 @@
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "1.0.5"
+@Field static final String DRIVER_VERSION = "1.0.6"
 
 // Preference hover tips (Hubitat has no native tooltip on inputs — CSS + title HTML).
 @Field static final String PREF_TIP_CSS = "<style>.tTip{display:inline-block;border-bottom:1px dotted currentColor;cursor:help}.tTip .tTipText{display:none;position:absolute;z-index:20;max-width:22rem;margin-top:.35rem;padding:.5rem .65rem;border-radius:6px;background:#222;color:#fff;font-weight:400;font-size:12px;line-height:1.35;white-space:normal}.tTip:hover .tTipText{display:block}</style>"
@@ -177,7 +179,6 @@ metadata {
         fingerprint mfr:"0063", prod:"4952", deviceId:"3534" // UltraPro ZWN4017
 	}
 
- preferences {
  preferences {
         input name: "profileNote", type: "paragraph", element: "paragraph", title: "Model-specific settings", description: PREF_TIP_CSS + "All settings are listed for every model. Settings your switch does not support (for example color LED, 3-way type, or relay control on 500S models) are ignored and never written to the device. The detected model is stored in device Data Values (profileKey, profileName, profileGeneration) and in state. Dotted labels below show extra help on hover."
         input name: "forceProfile", type: "enum", title: TIP_FORCE_PROFILE, multiple: false, options: ["auto" : "Auto-detect (default)", "4952-3135" : "4952-3135 Enbrighten ZW4008 / 46201 [500S]", "4952-3136" : "4952-3136 Jasco ZW4008 / 46562 [500S]", "4952-3237" : "4952-3237 UltraPro ZW4008 / 39348 [500S]", "4952-3137" : "4952-3137 Enbrighten ZW4009 / 46202 [500S]", "4952-3138" : "4952-3138 Jasco ZW4009 / 46563 [500S]", "4952-3238" : "4952-3238 UltraPro ZW4009 / 39354 [500S]", "4952-3139" : "4952-3139 Enbrighten ZW4008DV / 43072 [500S]", "4952-3231" : "4952-3231 Enbrighten ZW4009DV / 43074 [500S]", "4952-3239" : "4952-3239 Enbrighten ZWA4011 / 58433 [700S]", "4952-3331" : "4952-3331 Enbrighten ZWA4011DV / 59337 [700S]", "4952-3335" : "4952-3335 Jasco ZWA4011 / 59381 [700S]", "4952-3333" : "4952-3333 UltraPro ZWA4011 / 59347 [700S]", "4952-3330" : "4952-3330 Enbrighten ZWA4012 / 58436 [700S]", "4952-3332" : "4952-3332 Enbrighten ZWA4012DV / 59338 [700S]", "4952-3336" : "4952-3336 Jasco ZWA4012 / 59382 [700S]", "4952-3334" : "4952-3334 UltraPro ZWA4012 / 59368 [700S]", "4952-3435" : "4952-3435 Enbrighten ZWN4015 / 76591 [800S]", "4952-3437" : "4952-3437 Jasco ZWN4015 / 76596 [800S]", "4952-3438" : "4952-3438 Enbrighten ZWN4016 / 76592 [800S]", "4952-3530" : "4952-3530 Jasco ZWN4016 / 76598 [800S]", "4952-3534" : "4952-3534 UltraPro ZWN4017 / 76601 [800S]"], required: false, displayDuringSetup: true, defaultValue: "auto"
@@ -544,6 +545,12 @@ def zwaveEvent(hubitat.zwave.commands.centralscenev1.CentralSceneNotification cm
 
 def zwaveEvent(hubitat.zwave.commands.indicatorv3.IndicatorReport cmd) {
 	if (logEnable) log.debug "IndicatorReport: ${cmd}"
+}
+
+def zwaveEvent(hubitat.zwave.commands.basicv2.BasicReport cmd) {
+    // FIX 2026-11-21 F11: Basic Report is sent alongside the switch/level report; the state is
+    // already handled there, so log at debug instead of falling through to the unhandled warning.
+    if (logEnable) log.debug "---BASIC REPORT V2--- ${device.displayName} sent ${cmd}"
 }
 
 def zwaveEvent(hubitat.zwave.Command cmd) {
