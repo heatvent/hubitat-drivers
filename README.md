@@ -153,3 +153,9 @@ Hubitat includes a built-in ZSE50 driver (platform 2.4.3+). This Heatvent driver
 | `setVolume` / `setLedColor` / `setDefaultTone` | Write params 5 / 7 / 4 |
 
 Stock tones 1–25 are labeled in attributes; custom uploads use numbers 26–50.
+
+---
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE). The GE/Jasco drivers build on Jason Bottjen's (Botched1) Apache-2.0 drivers.
