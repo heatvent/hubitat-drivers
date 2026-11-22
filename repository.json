@@ -23,6 +23,18 @@
       ],
       "location": "https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/packageManifest/zooz-zse50-siren-chime.json",
       "description": "Full-parameter Zooz ZSE50 Siren & Chime driver (Sound Switch, Alarm/Chime, LED, config params 1-16)."
+    },
+    {
+      "id": "45ac9259-fab1-45fc-92b0-171d57aae533",
+      "name": "Relay Garage Door (Zooz ZEN16 + Tilt Sensor)",
+      "category": "Convenience",
+      "tags": [
+        "Garage Doors",
+        "Relays",
+    "ZWave"
+      ],
+      "location": "https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/packageManifest/relay-garage-door.json",
+      "description": "One garage door opener device from a Zooz ZEN16 relay and a tilt sensor: opening/closing states, battery, failure alerts, and a clean Home Assistant cover through Maker API."
     }
   ]
 }

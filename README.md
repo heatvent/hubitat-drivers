@@ -1,4 +1,4 @@
-﻿# Heatvent Hubitat Drivers
+# Heatvent Hubitat Drivers
 
 Hubitat drivers maintained by [Heatvent](https://github.com/heatvent).
 
@@ -6,9 +6,9 @@ Hubitat drivers maintained by [Heatvent](https://github.com/heatvent).
 
 1. In **Hubitat Package Manager** → **Package Manager Settings** → **Add a Custom Repository**
 2. Enter: `https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/repository.json`
-3. **Install** → search for **GE/Jasco Enbrighten Switch & Dimmer (Multi)**
+3. **Install** → search for the package (for example **GE/Jasco Enbrighten Switch & Dimmer (Multi)** or **Relay Garage Door**)
 
-Once this repository is merged into the [HubitatCommunity packagerepositories](https://github.com/HubitatCommunity/hubitat-packagerepositories) list, it will also appear under Install from a repository without adding a custom repo.
+This repository is in the [HubitatCommunity package list](https://github.com/HubitatCommunity/hubitat-packagerepositories), so its packages also appear under **Install → Search by Keywords** without adding a custom repository.
 
 ### Manual Import URLs
 
@@ -155,6 +155,47 @@ Hubitat includes a built-in ZSE50 driver (platform 2.4.3+). This Heatvent driver
 Stock tones 1–25 are labeled in attributes; custom uploads use numbers 26–50.
 
 ---
+
+## Relay Garage Door
+
+An app and driver that combine a relay and a door sensor into **one garage door opener device**. Built for a **Zooz ZEN16 MultiRelay** wired to the opener's button terminals and a **Zooz ZSE43 Tilt-Shock XS** (or any tilt/contact sensor) on the top panel. Install one app instance per door.
+
+The device has `GarageDoorControl`, `ContactSensor`, `Battery` and `Refresh`:
+
+| Attribute | Values |
+|-----------|--------|
+| `door` | `open`, `opening`, `closing`, `closed`, `unknown` |
+| `contact` | mirrored from the sensor (inverted if you ask) |
+| `battery` | mirrored from the sensor, or another battery device you pick |
+| `lastOpened` / `lastClosed` | time of the last open / close |
+| `lastResult` | `ok`, `failed to open`, `failed to close` |
+| `movedBy` | `hubitat` or `manual` (wall button, remote, keypad) |
+
+### How it behaves
+
+- **Open / Close** press the relay only when the door isn't already there. A `close` while the door is still opening is ignored, because a press would stop it instead. An `open` while it is closing is allowed: a press reverses a closing door on most openers.
+- The door shows **opening** or **closing** for the travel time you set, then the sensor's state. A tilt sensor closes only when the door is down, so **closed** shows as soon as it reports.
+- **Doors moved by a wall button or remote** show **opening** as soon as the sensor opens, and **closed** when it closes. A tilt sensor doesn't change until a close finishes. Turn on *Show closing when the open door's sensor detects vibration* to show **closing** from the ZSE43's shock reports (leave it off if bumps set it off).
+- If the door doesn't reach the requested position within the travel time, it shows the sensor's state, sets `lastResult`, and notifies the devices you pick.
+- **Optional warning delay** before the relay is pressed, so a rule can flash a light or sound a chime on `opening` / `closing`.
+
+### Setup
+
+1. Install **Relay Garage Door (Zooz ZEN16 + Tilt Sensor)** from HPM. Or import the app and driver by URL:
+   - App: `https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/Apps/Relay-Garage-Door/Relay-Garage-Door.groovy`
+   - Driver: `https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/Drivers/Relay-Garage-Door/Relay-Garage-Door.groovy`
+2. **Apps → Add User App → Relay Garage Door**. Name the door, pick the ZEN16 relay's child switch (for example *Relay 1*) and the tilt sensor, then set the travel time.
+3. On the ZEN16, set the relay's **Auto Turn-Off** to 1 second, or its input to *Garage Door Momentary*. The app also turns the relay off after the time you choose.
+
+### Home Assistant (Maker API)
+
+Add the new device to **Maker API**. The [Hubitat integration](https://github.com/jason0x43/hacs-hubitat) creates one device with:
+
+- a **garage door cover** with open, opening, closing and closed states
+- a **contact** binary sensor
+- a **battery** sensor
+
+The Hubitat-only attributes (`lastOpened`, `movedBy`, …) don't appear as entities. The relay and the sensor don't need to be in Maker API for the door to work; add them only if Home Assistant uses them on their own. The integration names the cover *<device> Door*; set it to **Use device name** in Home Assistant for a plain *Garage Door*.
 
 ## License
 
