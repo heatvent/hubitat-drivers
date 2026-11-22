@@ -11,6 +11,9 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  2.2.0 (2026-11-22) - previewTones: plays every tone (or only custom / stock ones) for a few seconds
+ *                       each, with a "preview" attribute showing which one is playing. Stop, or
+ *                       playing another sound, ends the preview.
  *  2.1.1 (2026-11-22) - Tone labels no longer show a length: the ZSE50 reports lengths inaccurately
  *                       (a 6 s custom file as 1 s, stock lengths change between scans).
  *  2.1.0 (2026-11-22) - Readable tone list: reads each tone's file name and length from the device
@@ -26,7 +29,7 @@
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "2.1.1"
+@Field static final String DRIVER_VERSION = "2.2.0"
 
 // Stock tone names by number, used until the device reports its files.
 @Field static final Map TONE_NAMES = [
@@ -120,6 +123,7 @@ metadata {
         attribute "powerSource", "string"
         attribute "ledColor", "string"
         attribute "toneCount", "number"
+        attribute "preview", "string"
 
         command "playSound", [[name: "Tone Number*", type: "NUMBER", description: "Tone file number 1–50", range: "1..50"]]
         command "setVolume", [[name: "Volume %*", type: "NUMBER", description: "0=mute, 1–100", range: "0..100"]]
@@ -128,6 +132,10 @@ metadata {
         command "stop"
         command "testTone", [[name: "Tone Number", type: "NUMBER", description: "Alias for playSound", range: "1..50"]]
         command "refreshTones"
+        command "previewTones", [
+            [name: "Seconds per tone", type: "NUMBER", description: "1–10 (default 2)", range: "1..10"],
+            [name: "Which tones", type: "ENUM", constraints: ["All", "Custom only", "Stock only"]]
+        ]
 
         fingerprint mfr: "027A", prod: "0004", deviceId: "0369", inClusters: "0x5E,0x55,0x98,0x9F,0x6C,0x22,0x85,0x8E,0x59,0x87,0x72,0x5A,0x73,0x80,0x71,0x70,0x79,0x25,0x86,0x7A", controllerType: "ZWV"
         fingerprint mfr: "027A", prod: "0004", deviceId: "0369", controllerType: "ZWV"
@@ -275,6 +283,7 @@ void on() { siren() }
 void off() { stop() }
 
 void siren() {
+    cancelPreview()
     playSound(prefInt("param4", 1))
 }
 
@@ -307,8 +316,53 @@ void both() {
     sendEvent(name: "status", value: "playing")
 }
 
+/** Plays each tone for a few seconds, one after another. */
+void previewTones(seconds = null, which = null) {
+    Integer secs = clampInt(toInt(seconds) ?: 2, 1, 10)
+    String pick = (which ?: "All").toString()
+    Map tones = knownTones()
+    List nums = tones.keySet().sort().findAll { Integer t ->
+        String file = tones[t]?.file
+        boolean custom = file && !STOCK_FILES.containsKey(file.toLowerCase())
+        pick == "Custom only" ? custom : (pick == "Stock only" ? !custom : true)
+    }
+    if (!nums) {
+        logWarn "previewTones: no ${pick.toLowerCase()} tones to play"
+        return
+    }
+    logInfo "previewTones: ${nums.size()} tone(s), ${secs}s each"
+    state.preview = [list: nums, idx: 0, secs: secs]
+    previewNext()
+}
+
+void previewNext() {
+    Map p = state.preview
+    if (!p) return
+    List nums = p.list
+    Integer idx = p.idx as Integer
+    if (idx >= nums.size()) {
+        logInfo "previewTones: done"
+        stop()
+        return
+    }
+    Integer t = nums[idx] as Integer
+    playTone(t)
+    sendEvent(name: "preview", value: "${idx + 1} of ${nums.size()}: ${toneLabel(t)}")
+    p.idx = idx + 1
+    state.preview = p
+    runIn(p.secs as Integer, "previewNext")
+}
+
+private void cancelPreview() {
+    if (!state.preview) return
+    state.remove("preview")
+    unschedule("previewNext")
+    sendEvent(name: "preview", value: "off")
+}
+
 void stop() {
     logInfo "stop()"
+    cancelPreview()
     List cmds = [secure(zwave.soundSwitchV1.tonePlaySet(toneIdentifier: 0))]
     // If strobe left the device in LED-only mode, restore the configured playback mode
     if (state.strobeActive) {
@@ -329,7 +383,11 @@ private void sendStopped() {
 }
 
 void playSound(toneNumber) {
-    Integer t = clampInt(toInt(toneNumber), 1, 50)
+    cancelPreview()
+    playTone(clampInt(toInt(toneNumber), 1, 50))
+}
+
+private void playTone(Integer t) {
     if (state.toneInfo && !knownTones().containsKey(t)) logWarn "playSound(${t}): the device has no tone ${t}; trying anyway"
     String name = toneName(t)
     logInfo "playSound(${t}) -> ${name}"

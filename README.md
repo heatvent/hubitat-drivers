@@ -152,6 +152,7 @@ Hubitat includes a built-in ZSE50 driver (platform 2.4.3+). This Heatvent driver
 | `off` / `stop` | Stop tone |
 | `setVolume` / `setLedColor` / `setDefaultTone` | Write params 5 / 7 / 4 |
 | `refreshTones` | Re-read the tone files from the device (after adding or removing MP3s) |
+| `previewTones(seconds, which)` | Play each tone for 1–10 s (default 2), all / custom only / stock only; `preview` shows e.g. `27 of 27: 27 - Door Warning Beep (custom)`. `stop` ends it |
 
 **Tone names.** The driver reads each tone's file name from the device and fills the **Play Sound** picker (`soundEffects`) and `toneList` with readable labels, for example `10 - Buzzer Alarm`. Stock files keep Zooz's names. Custom MP3s are named from their file name and marked custom, for example `garage_door-closing.mp3` becomes `26 - Garage Door Closing (custom)`. After copying files onto the ZSE50, run **refreshTones** (or Save Preferences). Until the device has reported, the stock list 1–25 is shown.
 
