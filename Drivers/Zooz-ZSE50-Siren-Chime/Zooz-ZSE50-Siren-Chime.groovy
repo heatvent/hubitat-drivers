@@ -11,6 +11,11 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  2.1.0 (2026-11-22) - Readable tone list: reads each tone's file name and length from the device
+ *                       (Sound Switch Tone Info) and fills soundEffects / toneList as "10 - Buzzer
+ *                       Alarm (4s)"; custom MP3s get a name from their file name. refreshTones command.
+ *                       Chime "status" attribute (playing / stopped). ping() for Health Check.
+ *                       Commands accept numbers sent as text (Maker API, Rule Machine).
  *  2.0.0 (2026-11-14) - Rewrite: correct Zooz param map (1–16), S2 via zwaveSecureEncap,
  *                       fingerprints, Chime/Alarm/strobe, playSound, setVolume, LED color,
  *                       association group 2, Config V4, driverVersion Data Value.
@@ -19,9 +24,9 @@
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "2.0.0"
+@Field static final String DRIVER_VERSION = "2.1.0"
 
-// Default stock tone names (firmware 1.20+ keeps addresses stable when files are added).
+// Stock tone names by number, used until the device reports its files.
 @Field static final Map TONE_NAMES = [
      1: "Door Open Alert"
     ,2: "Door Closed Alert"
@@ -48,6 +53,20 @@ import groovy.transform.Field
     ,23: "Siren 2"
     ,24: "Siren 3"
     ,25: "Tone"
+]
+
+// Stock file names (lower case) -> readable name. Custom files are named from their file name.
+@Field static final Map STOCK_FILES = [
+    "alert1_door-open.mp3": "Door Open Alert", "alert2_door-closed.mp3": "Door Closed Alert",
+    "alert3_window-open.mp3": "Window Open Alert", "alert4_window-closed.mp3": "Window Closed Alert",
+    "alert5_motion-detected.mp3": "Motion Detected", "alert6_motion-cleared.mp3": "Motion Cleared",
+    "alert7_leak-detected.mp3": "Leak Detected", "alert8_leak-cleared.mp3": "Leak Cleared",
+    "ambulance.mp3": "Ambulance", "buzzer-alarm.mp3": "Buzzer Alarm", "cluster-chimes.mp3": "Cluster Chimes",
+    "doorbell1.mp3": "Doorbell 1", "doorbell2.mp3": "Doorbell 2", "doorbell3.mp3": "Doorbell 3",
+    "doorbell4.mp3": "Doorbell 4", "doorbell5.mp3": "Doorbell 5", "doorbell6.mp3": "Doorbell 6",
+    "fire-alarm.mp3": "Fire Alarm", "jingle-bells.mp3": "Jingle Bells", "microwave.mp3": "Microwave",
+    "old-doorbell.mp3": "Old Doorbell", "siren1.mp3": "Siren 1", "siren2.mp3": "Siren 2",
+    "siren3.mp3": "Siren 3", "tone.mp3": "Tone"
 ]
 
 @Field static final Map LED_COLORS = [
@@ -98,6 +117,7 @@ metadata {
         attribute "volume", "number"
         attribute "powerSource", "string"
         attribute "ledColor", "string"
+        attribute "toneCount", "number"
 
         command "playSound", [[name: "Tone Number*", type: "NUMBER", description: "Tone file number 1–50", range: "1..50"]]
         command "setVolume", [[name: "Volume %*", type: "NUMBER", description: "0=mute, 1–100", range: "0..100"]]
@@ -105,6 +125,7 @@ metadata {
         command "setDefaultTone", [[name: "Default Tone*", type: "NUMBER", description: "Param 4 tone number 1–50", range: "1..50"]]
         command "stop"
         command "testTone", [[name: "Tone Number", type: "NUMBER", description: "Alias for playSound", range: "1..50"]]
+        command "refreshTones"
 
         fingerprint mfr: "027A", prod: "0004", deviceId: "0369", inClusters: "0x5E,0x55,0x98,0x9F,0x6C,0x22,0x85,0x8E,0x59,0x87,0x72,0x5A,0x73,0x80,0x71,0x70,0x79,0x25,0x86,0x7A", controllerType: "ZWV"
         fingerprint mfr: "027A", prod: "0004", deviceId: "0369", controllerType: "ZWV"
@@ -185,7 +206,7 @@ metadata {
 void installed() {
     logInfo "Installed ${DRIVER_VERSION}"
     updateDataValue("driverVersion", DRIVER_VERSION)
-    sendEvent(name: "toneList", value: buildToneListString())
+    publishTones()
     sendEvent(name: "checkInterval", value: 12 * 60 * 60, displayed: false, data: [protocol: "zwave"])
     initialize()
 }
@@ -193,7 +214,7 @@ void installed() {
 void updated() {
     logInfo "Updated ${DRIVER_VERSION}"
     updateDataValue("driverVersion", DRIVER_VERSION)
-    sendEvent(name: "toneList", value: buildToneListString())
+    publishTones()
     if (debugEnable) {
         logDebug "Debug logging on; auto-off in 30 minutes"
         runIn(1800, "logsOff")
@@ -231,10 +252,20 @@ void refresh() {
         secure(zwave.batteryV1.batteryGet()),
         secure(zwave.switchBinaryV2.switchBinaryGet()),
         secure(zwave.soundSwitchV1.tonePlayGet()),
-        secure(zwave.soundSwitchV1.tonesNumberGet()),
         secure(zwave.versionV3.versionGet()),
         secure(zwave.notificationV8.notificationGet(notificationType: 0x08, event: 0x00)) // power management
     ] + configGetCmds())
+}
+
+void ping() {
+    logDebug "ping()"
+    sendCmds([secure(zwave.switchBinaryV2.switchBinaryGet())])
+}
+
+/** Reads the number of tones, then each tone's file name and length. */
+void refreshTones() {
+    logInfo "refreshTones()"
+    sendCmds([secure(zwave.soundSwitchV1.tonesNumberGet())])
 }
 
 void on() { siren() }
@@ -242,8 +273,7 @@ void on() { siren() }
 void off() { stop() }
 
 void siren() {
-    Integer tone = (settings.param4 as Integer) ?: 1
-    playSound(tone)
+    playSound(prefInt("param4", 1))
 }
 
 void strobe() {
@@ -257,6 +287,7 @@ void strobe() {
     sendEvent(name: "alarm", value: "strobe")
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "soundName", value: "Strobe (LED only)")
+    sendEvent(name: "status", value: "playing")
 }
 
 void both() {
@@ -270,6 +301,8 @@ void both() {
     sendCmds(cmds)
     sendEvent(name: "alarm", value: "both")
     sendEvent(name: "switch", value: "on")
+    sendEvent(name: "soundName", value: toneName(prefInt("param4", 1)))
+    sendEvent(name: "status", value: "playing")
 }
 
 void stop() {
@@ -283,36 +316,43 @@ void stop() {
         state.strobeActive = false
     }
     sendCmds(cmds)
+    sendStopped()
+}
+
+private void sendStopped() {
     sendEvent(name: "switch", value: "off")
     sendEvent(name: "alarm", value: "off")
     sendEvent(name: "soundName", value: "None")
+    sendEvent(name: "status", value: "stopped")
 }
 
-void playSound(Number toneNumber) {
-    Integer t = clampInt(toneNumber as Integer, 1, 50)
-    String name = TONE_NAMES[t] ?: "Tone ${t}"
+void playSound(toneNumber) {
+    Integer t = clampInt(toInt(toneNumber), 1, 50)
+    if (state.toneInfo && !knownTones().containsKey(t)) logWarn "playSound(${t}): the device has no tone ${t}; trying anyway"
+    String name = toneName(t)
     logInfo "playSound(${t}) -> ${name}"
     sendEvent(name: "soundName", value: name)
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "alarm", value: "siren")
+    sendEvent(name: "status", value: "playing")
     sendCmds([
         secure(zwave.soundSwitchV1.tonePlaySet(toneIdentifier: t)),
         secure(zwave.switchBinaryV2.switchBinaryGet())
     ])
 }
 
-void testTone(Number toneNumber) { playSound(toneNumber) }
+void testTone(toneNumber) { playSound(toneNumber) }
 
-void setVolume(Number level) {
-    Integer v = clampInt(level as Integer, 0, 100)
+void setVolume(level) {
+    Integer v = clampInt(toInt(level), 0, 100)
     logInfo "setVolume(${v})"
     device.updateSetting("param5", [type: "number", value: v])
     sendEvent(name: "volume", value: v, unit: "%")
     sendCmds([cfgSet(5, v, 1), cfgGet(5)])
 }
 
-void setDefaultTone(Number toneNumber) {
-    Integer t = clampInt(toneNumber as Integer, 1, 50)
+void setDefaultTone(toneNumber) {
+    Integer t = clampInt(toInt(toneNumber), 1, 50)
     logInfo "setDefaultTone(${t})"
     device.updateSetting("param4", [type: "number", value: t])
     sendCmds([cfgSet(4, t, 1), cfgGet(4)])
@@ -360,23 +400,22 @@ void zwaveEvent(hubitat.zwave.commands.switchbinaryv2.SwitchBinaryReport cmd) { 
 
 private void handleOnOff(Integer value) {
     boolean on = (value != null && value != 0)
-    sendEvent(name: "switch", value: on ? "on" : "off")
-    if (!on) {
-        sendEvent(name: "alarm", value: "off")
-        sendEvent(name: "soundName", value: "None")
+    if (on) {
+        sendEvent(name: "switch", value: "on")
+    } else {
+        sendStopped()
     }
 }
 
 void zwaveEvent(hubitat.zwave.commands.soundswitchv1.TonePlayReport cmd) {
     if (debugEnable) logDebug "TonePlayReport: ${cmd}"
     if ((cmd.toneIdentifier as Integer) == 0) {
-        sendEvent(name: "switch", value: "off")
-        sendEvent(name: "alarm", value: "off")
-        sendEvent(name: "soundName", value: "None")
+        sendStopped()
     } else {
         Integer t = cmd.toneIdentifier as Integer
         sendEvent(name: "switch", value: "on")
-        sendEvent(name: "soundName", value: TONE_NAMES[t] ?: "Tone ${t}")
+        sendEvent(name: "soundName", value: toneName(t))
+        sendEvent(name: "status", value: "playing")
         if (device.currentValue("alarm") == "off" || !device.currentValue("alarm")) {
             sendEvent(name: "alarm", value: "siren")
         }
@@ -385,7 +424,40 @@ void zwaveEvent(hubitat.zwave.commands.soundswitchv1.TonePlayReport cmd) {
 
 void zwaveEvent(hubitat.zwave.commands.soundswitchv1.TonesNumberReport cmd) {
     if (debugEnable) logDebug "TonesNumberReport: ${cmd}"
-    updateDataValue("tonesSupported", "${cmd.supportedTones}")
+    Integer count = clampInt(cmd.supportedTones as Integer, 0, 50)
+    updateDataValue("tonesSupported", "${count}")
+    if (count > 0) {
+        state.pendingToneInfo = [:]
+        sendCmds((1..count).collect { secure(zwave.soundSwitchV1.toneInfoGet(toneIdentifier: it)) }, 400)
+        runIn(count + 10, "publishTones")   // in case the last report never arrives
+    }
+}
+
+void zwaveEvent(hubitat.zwave.commands.soundswitchv1.ToneInfoReport cmd) {
+    Integer t = cmd.toneIdentifier as Integer
+    Integer secs = (cmd.toneDuration ?: 0) as Integer
+    String file = (cmd.name ?: "").toString().trim()
+    if (debugEnable) logDebug "ToneInfoReport ${t}: '${file}' ${secs}s"
+    if (t == null || t < 1) return
+    Map info = state.pendingToneInfo ?: [:]
+    if (file) info["${t}"] = [file: file, secs: secs]
+    state.pendingToneInfo = info
+    runIn(3, "publishTones")   // after the last report of a batch
+}
+
+/** Publishes soundEffects (the Play Sound picker) and toneList from what the device reported. */
+void publishTones() {
+    if (state.pendingToneInfo) {
+        state.toneInfo = state.pendingToneInfo
+        state.remove("pendingToneInfo")
+    }
+    Map tones = knownTones()
+    List nums = tones.keySet().sort()
+    Map effects = [:]
+    nums.each { Integer t -> effects["${t}"] = toneLabel(t) }
+    sendEvent(name: "soundEffects", value: groovy.json.JsonOutput.toJson(effects))
+    sendEvent(name: "toneList", value: nums.collect { toneLabel(it) }.join(", "))
+    sendEvent(name: "toneCount", value: nums.size())
 }
 
 void zwaveEvent(hubitat.zwave.commands.configurationv1.ConfigurationReport cmd) { handleConfigReport(cmd) }
@@ -512,10 +584,52 @@ private Integer clampInt(Integer val, Integer min, Integer max) {
     return val
 }
 
-private String buildToneListString() {
-    return TONE_NAMES.sort { a, b -> a.key <=> b.key }
-        .collect { k, v -> "${k}=${v}" }
-        .join(", ")
+/** Tone number -> [file, secs] as reported by the device, or the stock list before any report. */
+private Map knownTones() {
+    Map info = state.toneInfo
+    Map tones = [:]
+    if (info) {
+        info.each { k, v -> tones[k as Integer] = v }
+    } else {
+        TONE_NAMES.each { k, v -> tones[k as Integer] = [file: null, secs: null] }
+    }
+    return tones
+}
+
+/** Readable name: the stock name for a stock file, otherwise one made from the file name. */
+private String toneName(Integer t) {
+    Map tone = knownTones()[t]
+    String file = tone?.file
+    if (!file) return TONE_NAMES[t] ?: "Tone ${t}"
+    String stock = STOCK_FILES[file.toLowerCase()]
+    return stock ?: humanize(file)
+}
+
+/** Picker label: "10 - Buzzer Alarm (4s)", or "26 - My Sound (custom, 7s)". */
+private String toneLabel(Integer t) {
+    Map tone = knownTones()[t]
+    String file = tone?.file
+    List extra = []
+    if (file && !STOCK_FILES.containsKey(file.toLowerCase())) extra << "custom"
+    if (tone?.secs) extra << "${tone.secs}s"
+    return "${t} - ${toneName(t)}" + (extra ? " (${extra.join(', ')})" : "")
+}
+
+/** "alert9_Garage-door_closing.mp3" -> "Garage Door Closing". */
+private String humanize(String file) {
+    String base = file.replaceAll(/(?i)\.(mp3|wav)$/, "")
+    base = base.replaceAll(/(?i)^alert\d+_/, "")
+    base = base.replaceAll(/[_\-]+/, " ").replaceAll(/\s+/, " ").trim()
+    if (!base) return file
+    return base.split(" ").collect { String w -> w[0].toUpperCase() + w.substring(1) }.join(" ")
+}
+
+/** Accepts numbers sent as numbers or text ("10", "10 - Buzzer Alarm"). */
+private Integer toInt(val) {
+    if (val == null) return null
+    if (val instanceof Number) return (val as Number).intValue()
+    def m = (val.toString().trim() =~ /^(\d+)/)
+    return m.find() ? m.group(1).toInteger() : null
 }
 
 private List parseAssocGroupList(list, int max) {
@@ -546,9 +660,9 @@ private List parseAssocGroupList(list, int max) {
     return nodes
 }
 
-private void sendCmds(List cmds) {
+private void sendCmds(List cmds, int delay = 300) {
     if (!cmds) return
-    sendHubCommand(new hubitat.device.HubMultiAction(delayBetween(cmds, 300), hubitat.device.Protocol.ZWAVE))
+    sendHubCommand(new hubitat.device.HubMultiAction(delayBetween(cmds, delay), hubitat.device.Protocol.ZWAVE))
 }
 
 private String secure(hubitat.zwave.Command cmd) {
