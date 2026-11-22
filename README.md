@@ -195,7 +195,7 @@ Add the new device to **Maker API**. The [Hubitat integration](https://github.co
 - a **contact** binary sensor
 - a **battery** sensor
 
-The Hubitat-only attributes (`lastOpened`, `movedBy`, …) don't appear as entities. Keep only this device in Maker API, not the relay or the sensor, so Home Assistant doesn't show them as extra devices.
+The Hubitat-only attributes (`lastOpened`, `movedBy`, …) don't appear as entities. The relay and the sensor don't need to be in Maker API for the door to work; add them only if Home Assistant uses them on their own. The integration names the cover *<device> Door*; set it to **Use device name** in Home Assistant for a plain *Garage Door*.
 
 ## License
 
