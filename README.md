@@ -156,6 +156,8 @@ Hubitat includes a built-in ZSE50 driver (platform 2.4.3+). This Heatvent driver
 
 **Tone names.** The driver reads each tone's file name from the device and fills the **Play Sound** picker (`soundEffects`) and `toneList` with readable labels, for example `10 - Buzzer Alarm`. Stock files keep Zooz's names. Custom MP3s are named from their file name and marked custom, for example `garage_door-closing.mp3` becomes `26 - Garage Door Closing (custom)`. After copying files onto the ZSE50, run **refreshTones** (or Save Preferences). Until the device has reported, the stock list 1–25 is shown.
 
+Ready-made door warning sounds (a back-up-alarm beep and others) are in [`Sounds/Zooz-ZSE50`](Sounds/Zooz-ZSE50/), with how to copy them onto the chime.
+
 `status` (`playing` / `stopped`) follows playback. Commands also accept numbers sent as text, as Maker API and some apps send them.
 
 ---
@@ -195,6 +197,8 @@ The device has `GarageDoorControl`, `ContactSensor`, `Battery` and `Refresh`. Wh
 ### Warning before the door moves
 
 Pick a **buzzer or strobe relay** (switched on while warning), a **chime or siren** (any `Chime` device, e.g. the Zooz ZSE50, which plays a sound number), or both. Choose *Closing* or *Opening and closing*, and how many seconds to warn before the opener is pressed (5 is typical). By default the warning lasts until the door stops. An Open or Close during the warning cancels the move before the door starts.
+
+For a ZSE50, [`Sounds/Zooz-ZSE50/door-warning_beep.mp3`](Sounds/Zooz-ZSE50/door-warning_beep.mp3) is a back-up-alarm style beep made for this.
 
 **Buzzer on the ZEN16:** the relays are dry contacts with no power output. Take power from the ZEN16's own 12 V DC supply, switched by a spare relay:
 
