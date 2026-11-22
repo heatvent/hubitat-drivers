@@ -43,7 +43,7 @@ import groovy.transform.Field
     ,13: "Doorbell 2"
     ,14: "Doorbell 3"
     ,15: "Doorbell 4"
-    ,16: "Doorbells"
+    ,16: "Doorbell 5"
     ,17: "Doorbell 6"
     ,18: "Fire Alarm"
     ,19: "Jingle Bells"
@@ -444,7 +444,9 @@ void zwaveEvent(hubitat.zwave.commands.soundswitchv1.ToneInfoReport cmd) {
     if (debugEnable) logDebug "ToneInfoReport ${t}: '${file}' ${secs}s"
     if (t == null || t < 1) return
     Map info = state.pendingToneInfo ?: [:]
-    if (file) info["${t}"] = [file: file, secs: secs]
+    // Unused slots report "[empty Track]" with no length.
+    boolean empty = !file || secs == 0 || file.toLowerCase().contains("empty track")
+    if (!empty) info["${t}"] = [file: file, secs: secs]
     state.pendingToneInfo = info
     runIn(3, "publishTones")   // after the last report of a batch
 }
