@@ -21,6 +21,9 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  1.2.0 (2026-11-22) - Low battery reminder: a notification when the sensor's battery drops below a
+ *                       level, then a short chime (or buzzer chirp) every few hours within set hours.
+ *                       It never sounds while the door moves; a door warning always takes over.
  *  1.1.0 (2026-11-22) - Sensor type (tilt / wireless contact / wired contact; a wired input can report
  *                       as a contact or a switch), optional fully-open sensor, warning buzzer or chime
  *                       before and during movement, no-battery device for wired sensors.
@@ -29,7 +32,7 @@
 
 import groovy.transform.Field
 
-@Field static final String APP_VERSION = "1.1.0"
+@Field static final String APP_VERSION = "1.2.0"
 @Field static final String CHILD_DRIVER = "Relay Garage Door"
 @Field static final String CHILD_DRIVER_NO_BATTERY = "Relay Garage Door (No Battery)"
 @Field static final String CHILD_NAMESPACE = "Heatvent"
@@ -124,6 +127,23 @@ Map mainPage() {
                 range: "0..30", required: false, description: "5 seconds is typical when a warning device is set"
             input "warnWhileMoving", "bool", title: "Keep warning until the door stops", defaultValue: true
         }
+        if (batterySensor || contactSensor?.hasAttribute("battery") || openSensor?.hasAttribute("battery")) {
+            section("Low battery reminder") {
+                paragraph "When the sensor's battery drops below the level, the notification devices get a message. " +
+                    "Then the chime plays a short sound (its LED flashes with it), or the buzzer relay chirps, every few " +
+                    "hours until the battery is replaced. A short chirp that differs from the door warning works best."
+                input "lowBatteryLevel", "number", title: "Battery level (%) that counts as low (0 = off)",
+                    defaultValue: 20, range: "0..90", required: false
+                if (warningChime) {
+                    input "lowBatterySound", "number", title: "Chime sound number for the reminder", required: false,
+                        description: "Pick a different sound from the door warning"
+                }
+                input "lowBatteryHours", "enum", title: "Remind every", defaultValue: "4",
+                    options: ["1": "1 hour", "2": "2 hours", "4": "4 hours", "8": "8 hours", "12": "12 hours", "24": "24 hours"]
+                input "lowBatteryFrom", "time", title: "Only beep after (optional)", required: false
+                input "lowBatteryTo", "time", title: "Only beep before (optional)", required: false
+            }
+        }
         section("Manual operation") {
             paragraph "A door moved by a wall button or remote shows <b>opening</b> as soon as the closed sensor opens and " +
                 "<b>closed</b> when it closes. Without a fully open sensor, it shows <b>open</b> while it closes, " +
@@ -135,7 +155,7 @@ Map mainPage() {
             }
         }
         section("Notifications") {
-            input "notifyDevices", "capability.notification", title: "Notify when the door doesn't open or close",
+            input "notifyDevices", "capability.notification", title: "Notify when the door doesn't open or close, or the battery is low",
                 multiple: true, required: false
         }
         section("Logging") {
@@ -194,6 +214,9 @@ void initialize() {
     if (logEnable) runIn(1800, "logsOff")
 
     syncDoor()
+    checkBattery()
+    // updated() cleared the schedule; keep reminding if the battery is still low.
+    if (state.lowBattery) runIn(((lowBatteryHours ?: "4") as Integer) * 3600, "lowBatteryBeep")
 }
 
 private void subscribeSensor(dev, String handler) {
@@ -394,6 +417,83 @@ void finishManual() {
 
 void batteryHandler(evt) {
     sendBattery()
+    checkBattery()
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Low battery reminder
+// ----------------------------------------------------------------------------------------------------
+
+private void checkBattery() {
+    Integer threshold = (lowBatteryLevel ?: 0) as Integer
+    def level = batteryDevice()?.currentValue("battery")
+    if (threshold <= 0 || level == null) {
+        clearLowBattery()
+        return
+    }
+    Integer pct = level as Integer
+    if (pct < threshold) {
+        if (!state.lowBattery) {
+            state.lowBattery = true
+            String msg = "${app.label}: sensor battery is low (${pct}%)"
+            log.warn msg
+            notifyDevices?.each { it.deviceNotification(msg) }
+            lowBatteryBeep()
+        }
+    } else if (pct >= threshold + 5) {
+        // A little above the threshold so a reading that hovers doesn't flip it on and off.
+        clearLowBattery()
+    }
+}
+
+private void clearLowBattery() {
+    if (!state.lowBattery) return
+    state.remove("lowBattery")
+    unschedule("lowBatteryBeep")
+    log.info "${app.label}: sensor battery OK; low battery reminder off"
+}
+
+void lowBatteryBeep() {
+    if (!state.lowBattery) return
+    Integer hours = ((lowBatteryHours ?: "4") as Integer)
+    runIn(hours * 3600, "lowBatteryBeep")
+
+    if (lowBatteryFrom && lowBatteryTo &&
+            !timeOfDayIsBetween(toDateTime(lowBatteryFrom), toDateTime(lowBatteryTo), new Date(), location.timeZone)) {
+        logDebug "Low battery beep skipped: outside the beep hours"
+        return
+    }
+    if (state.pending != null || state.manual != null || state.warning) {
+        // Never sound while the door moves; try again in a few minutes.
+        runIn(300, "lowBatteryBeep")
+        return
+    }
+    if (warningChime && lowBatterySound) {
+        if (warningChime.currentValue("status") == "playing") {
+            runIn(300, "lowBatteryBeep")   // something else is using the chime
+            return
+        }
+        logDebug "Low battery beep on ${warningChime.displayName}"
+        state.batteryBeep = true
+        warningChime.playSound((lowBatterySound as Integer))
+        runIn(3, "endLowBatteryBeep")
+    } else if (warningSwitch) {
+        logDebug "Low battery chirp on ${warningSwitch.displayName}"
+        state.batteryBeep = true
+        warningSwitch.on()
+        runInMillis(400, "endLowBatteryBeep")
+    }
+}
+
+void endLowBatteryBeep() {
+    if (!state.batteryBeep) return
+    state.remove("batteryBeep")
+    if (state.warning) return   // a door warning took over the chime or buzzer
+    if (warningChime && lowBatterySound) {
+        if (warningChime.hasCommand("stop")) warningChime.stop()
+    } else {
+        warningSwitch?.off()
+    }
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -406,6 +506,7 @@ private boolean shouldWarn(String target) {
 }
 
 private void startWarning() {
+    state.remove("batteryBeep")
     state.warning = true
     warningSwitch?.on()
     if (warningChime) warningChime.playSound(((chimeSound ?: 1) as Integer))

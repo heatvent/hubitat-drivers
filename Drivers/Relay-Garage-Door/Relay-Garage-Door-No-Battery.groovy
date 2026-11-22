@@ -19,12 +19,13 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  1.2.0 (2026-11-22) - Version bump with the app (low battery reminder).
  *  1.1.0 (2026-11-22) - Initial release (for wired sensors without a battery).
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "1.1.0"
+@Field static final String DRIVER_VERSION = "1.2.0"
 
 metadata {
     definition(
