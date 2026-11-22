@@ -11,6 +11,8 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  2.2.1 (2026-11-22) - Fix: power source was reversed (unplugged showed mains, plugged in showed battery).
+ *                       "Power applied" also counts as mains. Declares the PowerSource capability.
  *  2.2.0 (2026-11-22) - previewTones: plays every tone (or only custom / stock ones) for a few seconds
  *                       each, with a "preview" attribute showing which one is playing. Stop, or
  *                       playing another sound, ends the preview.
@@ -29,7 +31,7 @@
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "2.2.0"
+@Field static final String DRIVER_VERSION = "2.2.1"
 
 // Stock tone names by number, used until the device reports its files.
 @Field static final Map TONE_NAMES = [
@@ -114,13 +116,13 @@ metadata {
         capability "Chime"
         capability "Configuration"
         capability "HealthCheck"
+        capability "PowerSource"
         capability "Refresh"
         capability "Switch"
 
         attribute "soundName", "string"
         attribute "toneList", "string"
         attribute "volume", "number"
-        attribute "powerSource", "string"
         attribute "ledColor", "string"
         attribute "toneCount", "number"
         attribute "preview", "string"
@@ -263,7 +265,8 @@ void refresh() {
         secure(zwave.switchBinaryV2.switchBinaryGet()),
         secure(zwave.soundSwitchV1.tonePlayGet()),
         secure(zwave.versionV3.versionGet()),
-        secure(zwave.notificationV8.notificationGet(notificationType: 0x08, event: 0x00)) // power management
+        // Is "AC mains disconnected" active? The answer is that event (on battery) or idle (on mains).
+        secure(zwave.notificationV8.notificationGet(notificationType: 0x08, event: 0x02))
     ] + configGetCmds())
 }
 
@@ -554,17 +557,29 @@ void zwaveEvent(hubitat.zwave.commands.batteryv1.BatteryReport cmd) {
 
 void zwaveEvent(hubitat.zwave.commands.notificationv8.NotificationReport cmd) {
     if (debugEnable) logDebug "Notification: type=${cmd.notificationType} event=${cmd.event}"
-    // Power Management (0x08): 0x00 idle, 0x02 AC connected / replaced, 0x03 AC disconnected (on battery)
+    // Power Management (0x08): 0x01 power applied, 0x02 AC mains disconnected (on backup battery),
+    // 0x03 AC mains re-connected. Confirmed on the ZSE50: unplugging sends 0x02, plugging in sends 0x03.
     if ((cmd.notificationType as Integer) == 0x08) {
         switch (cmd.event as Integer) {
-            case 0x02:
-                sendEvent(name: "powerSource", value: "mains")
+            case 0x00:
+                // Idle reply to the refresh query: "mains disconnected" is not active.
+                List params = cmd.eventParameter ?: []
+                if (params && (params[0] as Integer) == 0x02) sendPowerSource("mains")
                 break
+            case 0x01:
             case 0x03:
-                sendEvent(name: "powerSource", value: "battery")
+                sendPowerSource("mains")
+                break
+            case 0x02:
+                sendPowerSource("battery")
                 break
         }
     }
+}
+
+private void sendPowerSource(String value) {
+    if (device.currentValue("powerSource") != value) logInfo "power source: ${value}"
+    sendEvent(name: "powerSource", value: value)
 }
 
 void zwaveEvent(hubitat.zwave.commands.associationv2.AssociationReport cmd) {
