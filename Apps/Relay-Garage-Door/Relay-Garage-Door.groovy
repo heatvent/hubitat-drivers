@@ -131,8 +131,8 @@ Map mainPage() {
         if (batterySensor || contactSensor?.hasAttribute("battery") || openSensor?.hasAttribute("battery")) {
             section("Low battery reminder") {
                 paragraph "When the sensor's battery drops below the level, the notification devices get a message. " +
-                    "Then the chime plays a short sound (its LED flashes with it), or the buzzer relay chirps, every few " +
-                    "hours until the battery is replaced. A short chirp that differs from the door warning works best."
+                    "Then the chime plays a short sound (its LED flashes with it), or the buzzer relay chirps, on the " +
+                    "schedule below until the battery is replaced. A short chirp that differs from the door warning works best."
                 input "lowBatteryLevel", "number", title: "Battery level (%) that counts as low (0 = off)",
                     defaultValue: 20, range: "0..90", required: false
                 if (warningChime) {
