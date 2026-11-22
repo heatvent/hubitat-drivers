@@ -434,9 +434,13 @@ void zwaveEvent(hubitat.zwave.commands.soundswitchv1.TonesNumberReport cmd) {
 }
 
 void zwaveEvent(hubitat.zwave.commands.soundswitchv1.ToneInfoReport cmd) {
-    Integer t = cmd.toneIdentifier as Integer
-    Integer secs = (cmd.toneDuration ?: 0) as Integer
-    String file = (cmd.name ?: "").toString().trim()
+    // Decoded from the raw frame: tone id, duration (2 bytes, seconds), name length, name bytes.
+    List<Short> p = cmd.payload
+    if (!p || p.size() < 4) return
+    Integer t = p[0] as Integer
+    Integer secs = ((p[1] as Integer) << 8) + (p[2] as Integer)
+    Integer len = Math.min(p[3] as Integer, p.size() - 4)
+    String file = len > 0 ? new String(p[4..<(4 + len)].collect { (byte) (it & 0xFF) } as byte[], "UTF-8").trim() : ""
     if (debugEnable) logDebug "ToneInfoReport ${t}: '${file}' ${secs}s"
     if (t == null || t < 1) return
     Map info = state.pendingToneInfo ?: [:]
