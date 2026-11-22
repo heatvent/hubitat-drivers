@@ -158,34 +158,60 @@ Stock tones 1–25 are labeled in attributes; custom uploads use numbers 26–50
 
 ## Relay Garage Door
 
-An app and driver that combine a relay and a door sensor into **one garage door opener device**. Built for a **Zooz ZEN16 MultiRelay** wired to the opener's button terminals and a **Zooz ZSE43 Tilt-Shock XS** (or any tilt/contact sensor) on the top panel. Install one app instance per door.
+An app and driver that combine a relay and a door sensor into **one garage door opener device**. Built for a **Zooz ZEN16 MultiRelay** wired to the opener's button terminals. Install one app instance per door.
 
-The device has `GarageDoorControl`, `ContactSensor`, `Battery` and `Refresh`:
+**Door sensor**, any one of:
+
+| Sensor type | Example | Notes |
+|-------------|---------|-------|
+| Tilt sensor on the top panel | Zooz ZSE43 Tilt-Shock XS | Battery shown; vibration can show *closing* for manual closes |
+| Wireless contact sensor | Zooz ZSE41, any Z-Wave/Zigbee contact | Mount it so it is **closed when the door is down** |
+| Wired contact | Reed switch on a ZEN16 or ZEN17 input | Reports as a contact **or** a switch (on = closed); no battery |
+
+**Fully open sensor (optional):** a second sensor, of any of the types above, where the door stops when fully open. With it, the door shows **open** only when it is fully open, and **closing** as soon as a door moved by a wall button leaves the open position. A ZEN16 has three inputs, so two reed switches (closed and fully open) can be wired straight to it.
+
+The device has `GarageDoorControl`, `ContactSensor`, `Battery` and `Refresh`. When no sensor has a battery, the app uses **Relay Garage Door (No Battery)**, so Home Assistant doesn't show an empty battery sensor.
 
 | Attribute | Values |
 |-----------|--------|
 | `door` | `open`, `opening`, `closing`, `closed`, `unknown` |
-| `contact` | mirrored from the sensor (inverted if you ask) |
-| `battery` | mirrored from the sensor, or another battery device you pick |
+| `contact` | from the closed sensor (inverted if you ask) |
+| `battery` | from a sensor, or another battery device you pick |
 | `lastOpened` / `lastClosed` | time of the last open / close |
-| `lastResult` | `ok`, `failed to open`, `failed to close` |
+| `lastResult` | `ok`, `failed to open`, `failed to close`, `cancelled` |
 | `movedBy` | `hubitat` or `manual` (wall button, remote, keypad) |
 
 ### How it behaves
 
 - **Open / Close** press the relay only when the door isn't already there. A `close` while the door is still opening is ignored, because a press would stop it instead. An `open` while it is closing is allowed: a press reverses a closing door on most openers.
-- The door shows **opening** or **closing** for the travel time you set, then the sensor's state. A tilt sensor closes only when the door is down, so **closed** shows as soon as it reports.
-- **Doors moved by a wall button or remote** show **opening** as soon as the sensor opens, and **closed** when it closes. A tilt sensor doesn't change until a close finishes. Turn on *Show closing when the open door's sensor detects vibration* to show **closing** from the ZSE43's shock reports (leave it off if bumps set it off).
-- If the door doesn't reach the requested position within the travel time, it shows the sensor's state, sets `lastResult`, and notifies the devices you pick.
-- **Optional warning delay** before the relay is pressed, so a rule can flash a light or sound a chime on `opening` / `closing`.
+- The door shows **opening** or **closing** until it reaches the position (the fully open sensor, or the closed sensor) or the travel time runs out.
+- **Doors moved by a wall button or remote** show **opening** as soon as the closed sensor opens, and **closed** when it closes. Without a fully open sensor, a manual close shows only when it ends. For a ZSE43, turn on *Show closing when the open door's sensor detects vibration* to show it sooner (leave it off if bumps set it off).
+- If the door doesn't reach the position in time, it shows where it is, sets `lastResult`, and notifies the devices you pick.
+
+### Warning before the door moves
+
+Pick a **buzzer or strobe relay** (switched on while warning), a **chime or siren** (any `Chime` device, e.g. the Zooz ZSE50, which plays a sound number), or both. Choose *Closing* or *Opening and closing*, and how many seconds to warn before the opener is pressed (5 is typical). By default the warning lasts until the door stops. An Open or Close during the warning cancels the move before the door starts.
+
+**Buzzer on the ZEN16:** the relays are dry contacts with no power output. Take power from the ZEN16's own 12 V DC supply, switched by a spare relay:
+
+```
+12 V supply (+) ──┬── ZEN16 power (+)
+                  └── Relay 2 COM          Relay 2 NO ──── buzzer (+)
+12 V supply (−) ──┬── ZEN16 power (−)
+                  └─────────────────────────────────── buzzer (−)
+```
+
+Use a **12 V DC piezo buzzer** (a pulsing one sounds like a commercial opener) or a **12 V strobe with buzzer**. Both draw well under 100 mA. If your ZEN16 runs on 24 V, use a 24 V buzzer. Leave Relay 2's input set to *Report Input Status Only* if a sensor is wired to Sw2, and pick *Relay 2* as the buzzer relay.
 
 ### Setup
 
-1. Install **Relay Garage Door (Zooz ZEN16 + Tilt Sensor)** from HPM. Or import the app and driver by URL:
+1. Install **Relay Garage Door (Zooz ZEN16 + Tilt/Contact Sensor)** from HPM. Or import by URL:
    - App: `https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/Apps/Relay-Garage-Door/Relay-Garage-Door.groovy`
    - Driver: `https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/Drivers/Relay-Garage-Door/Relay-Garage-Door.groovy`
-2. **Apps → Add User App → Relay Garage Door**. Name the door, pick the ZEN16 relay's child switch (for example *Relay 1*) and the tilt sensor, then set the travel time.
+   - Driver (no battery): `https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/Drivers/Relay-Garage-Door/Relay-Garage-Door-No-Battery.groovy`
+2. **Apps → Add User App → Relay Garage Door**. Name the door, pick the ZEN16 relay's child switch (for example *Relay 1*), choose the sensor type and the sensor, then set the travel time.
 3. On the ZEN16, set the relay's **Auto Turn-Off** to 1 second, or its input to *Garage Door Momentary*. The app also turns the relay off after the time you choose.
+4. For a reed switch on a ZEN16 input, set that input's *Input Control* to *Report Input Status Only*, then pick the input's child device as the sensor.
 
 ### Home Assistant (Maker API)
 
@@ -193,9 +219,9 @@ Add the new device to **Maker API**. The [Hubitat integration](https://github.co
 
 - a **garage door cover** with open, opening, closing and closed states
 - a **contact** binary sensor
-- a **battery** sensor
+- a **battery** sensor (not with the No Battery driver)
 
-The Hubitat-only attributes (`lastOpened`, `movedBy`, …) don't appear as entities. The relay and the sensor don't need to be in Maker API for the door to work; add them only if Home Assistant uses them on their own. The integration names the cover *<device> Door*; set it to **Use device name** in Home Assistant for a plain *Garage Door*.
+The Hubitat-only attributes (`lastOpened`, `movedBy`, …) don't appear as entities. The relay and the sensors don't need to be in Maker API for the door to work; add them only if Home Assistant uses them on their own. The integration names the cover *<device> Door*; set it to **Use device name** in Home Assistant for a plain *Garage Door*.
 
 ## License
 
