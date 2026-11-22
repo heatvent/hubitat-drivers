@@ -18,6 +18,7 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  1.2.1 (2026-11-22) - Version bump with the app (5 / 15 / 30 minute reminder options).
  *  1.2.0 (2026-11-22) - Version bump with the app (low battery reminder).
  *  1.1.0 (2026-11-22) - Version bump with the app (wired / wireless sensors, warning device).
  *  1.0.0 (2026-11-22) - Initial release.
@@ -25,7 +26,7 @@
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "1.2.0"
+@Field static final String DRIVER_VERSION = "1.2.1"
 
 metadata {
     definition(

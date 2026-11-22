@@ -213,7 +213,7 @@ Use a **12 V DC piezo buzzer** (a pulsing one sounds like a commercial opener) o
 
 ### Low battery reminder
 
-When the sensor's battery drops below a level you set (default 20%), the notification devices get a message. Then the chime plays a short sound every few hours (1–24), or the buzzer relay chirps. Optionally this only happens between set times. It never sounds while the door moves, and a door warning always takes over. On a ZSE50 the LED flashes with it. [`Sounds/Zooz-ZSE50/low-battery_chirp.mp3`](Sounds/Zooz-ZSE50/low-battery_chirp.mp3) is a smoke-alarm-style chirp made for this. The reminder stops once the battery is back 5% above the level.
+When the sensor's battery drops below a level you set (default 20%), the notification devices get a message. Then the chime plays a short sound every 5, 15 or 30 minutes or every few hours (1–24), or the buzzer relay chirps. Optionally this only happens between set times. It never sounds while the door moves, and a door warning always takes over. On a ZSE50 the LED flashes with it. [`Sounds/Zooz-ZSE50/low-battery_chirp.mp3`](Sounds/Zooz-ZSE50/low-battery_chirp.mp3) is a smoke-alarm-style chirp made for this. The reminder stops once the battery is back 5% above the level.
 
 ### Setup
 
