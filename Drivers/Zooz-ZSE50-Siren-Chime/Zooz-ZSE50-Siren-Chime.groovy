@@ -265,7 +265,8 @@ void refresh() {
         secure(zwave.switchBinaryV2.switchBinaryGet()),
         secure(zwave.soundSwitchV1.tonePlayGet()),
         secure(zwave.versionV3.versionGet()),
-        secure(zwave.notificationV8.notificationGet(notificationType: 0x08, event: 0x00)) // power management
+        // Is "AC mains disconnected" active? The answer is that event (on battery) or idle (on mains).
+        secure(zwave.notificationV8.notificationGet(notificationType: 0x08, event: 0x02))
     ] + configGetCmds())
 }
 
@@ -560,6 +561,11 @@ void zwaveEvent(hubitat.zwave.commands.notificationv8.NotificationReport cmd) {
     // 0x03 AC mains re-connected. Confirmed on the ZSE50: unplugging sends 0x02, plugging in sends 0x03.
     if ((cmd.notificationType as Integer) == 0x08) {
         switch (cmd.event as Integer) {
+            case 0x00:
+                // Idle reply to the refresh query: "mains disconnected" is not active.
+                List params = cmd.eventParameter ?: []
+                if (params && (params[0] as Integer) == 0x02) sendPowerSource("mains")
+                break
             case 0x01:
             case 0x03:
                 sendPowerSource("mains")
