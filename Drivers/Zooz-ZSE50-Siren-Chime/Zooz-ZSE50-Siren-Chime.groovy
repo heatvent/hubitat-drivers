@@ -11,6 +11,8 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  2.1.1 (2026-11-22) - Tone labels no longer show a length: the ZSE50 reports lengths inaccurately
+ *                       (a 6 s custom file as 1 s, stock lengths change between scans).
  *  2.1.0 (2026-11-22) - Readable tone list: reads each tone's file name and length from the device
  *                       (Sound Switch Tone Info) and fills soundEffects / toneList as "10 - Buzzer
  *                       Alarm (4s)"; custom MP3s get a name from their file name. refreshTones command.
@@ -24,7 +26,7 @@
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "2.1.0"
+@Field static final String DRIVER_VERSION = "2.1.1"
 
 // Stock tone names by number, used until the device reports its files.
 @Field static final Map TONE_NAMES = [
@@ -611,13 +613,12 @@ private String toneName(Integer t) {
     return stock ?: humanize(file)
 }
 
-/** Picker label: "10 - Buzzer Alarm (4s)", or "26 - My Sound (custom, 7s)". */
+/** Picker label: "10 - Buzzer Alarm", or "26 - My Sound (custom)". Lengths are left out: the device reports them inaccurately. */
 private String toneLabel(Integer t) {
     Map tone = knownTones()[t]
     String file = tone?.file
     List extra = []
     if (file && !STOCK_FILES.containsKey(file.toLowerCase())) extra << "custom"
-    if (tone?.secs) extra << "${tone.secs}s"
     return "${t} - ${toneName(t)}" + (extra ? " (${extra.join(', ')})" : "")
 }
 
