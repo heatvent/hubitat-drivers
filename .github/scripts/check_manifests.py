@@ -2,9 +2,9 @@
 
 - every JSON file parses
 - every driver/package `location` on this repo points to a file that exists
-- each manifest `version` matches DRIVER_VERSION in the drivers it lists
+- each manifest `version` matches DRIVER_VERSION / APP_VERSION in the code it lists
 - each driver's importUrl (if set) points at its own path
-- every .groovy file under Drivers/ has balanced { } ( ) [ ] outside strings and
+- every .groovy file under Drivers/ and Apps/ has balanced { } ( ) [ ] outside strings and
   comments (a stray brace makes the hub refuse the upload, and HPM then reports
   only "Failed to upgrade driver")
 """
@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW = "https://raw.githubusercontent.com/heatvent/hubitat-drivers/main/"
-VERSION = re.compile(r'DRIVER_VERSION\s*=\s*"([^"]+)"')
+VERSION = re.compile(r'(?:DRIVER|APP)_VERSION\s*=\s*"([^"]+)"')
 IMPORT_URL = re.compile(r'importUrl:\s*"([^"]+)"')
 
 errors: list[str] = []
@@ -68,7 +68,7 @@ def unbalanced(text: str) -> str | None:
     return None
 
 
-for groovy in sorted((ROOT / "Drivers").rglob("*.groovy")):
+for groovy in sorted([*(ROOT / "Drivers").rglob("*.groovy"), *(ROOT / "Apps").rglob("*.groovy")]):
     problem = unbalanced(groovy.read_text(encoding="utf-8-sig"))
     if problem:
         errors.append(f"{groovy.relative_to(ROOT)}: {problem}")
@@ -96,7 +96,7 @@ for path in manifests:
         continue
     manifest = load(path)
     want = manifest.get("version")
-    for driver in manifest.get("drivers", []):
+    for driver in [*manifest.get("apps", []), *manifest.get("drivers", [])]:
         src = local(driver.get("location", ""))
         if src is None:
             continue
@@ -107,10 +107,10 @@ for path in manifests:
         text = src.read_text(encoding="utf-8-sig")
         found = VERSION.search(text)
         if found is None:
-            errors.append(f"{src.relative_to(ROOT)}: no DRIVER_VERSION")
+            errors.append(f"{src.relative_to(ROOT)}: no DRIVER_VERSION / APP_VERSION")
         elif found.group(1) != want:
             errors.append(
-                f"{name}: version {want} but {src.relative_to(ROOT)} has DRIVER_VERSION {found.group(1)}"
+                f"{name}: version {want} but {src.relative_to(ROOT)} has version {found.group(1)}"
             )
         url = IMPORT_URL.search(text)
         if url and local(url.group(1)) != src:
