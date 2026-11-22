@@ -6,6 +6,7 @@ Door warning sounds for the [Zooz ZSE50 Siren & Chime driver](../../README.md#zo
 |------|-------|--------|---------------------|
 | [`door-warning_beep.mp3`](door-warning_beep.mp3) | Back-up-alarm style beep, about 1 kHz, half a second on and off. Like a city garage exit or a reversing truck. **Recommended.** | 6 s | `Door Warning Beep (custom)` |
 | [`garage-door_closing.mp3`](garage-door_closing.mp3) | Pulsing two-tone beeps (2.4 / 1.8 kHz), like a commercial opener | 6 s | `Garage Door Closing (custom)` |
+| [`low-battery_chirp.mp3`](low-battery_chirp.mp3) | One short high chirp every 2 s, like a smoke alarm's low-battery chirp. For the Relay Garage Door low battery reminder. | 2 s | `Low Battery Chirp (custom)` |
 | [`scifi-bay-door_opening.mp3`](scifi-bay-door_opening.mp3) | Sci-fi hangar door: air hiss, rising motor hum, two-tone alert, end clunk | 7 s | `Scifi Bay Door Opening (custom)` |
 | [`scifi-bay-door_closing.mp3`](scifi-bay-door_closing.mp3) | The same with a falling hum, for closing | 7 s | `Scifi Bay Door Closing (custom)` |
 | [`scifi-bay_alert.mp3`](scifi-bay_alert.mp3) | Starship-style klaxon whoop | 6 s | `Scifi Bay Alert (custom)` |
@@ -29,6 +30,7 @@ The scripts need Python 3 and [`lameenc`](https://pypi.org/project/lameenc/) to 
 ```
 python -m pip install lameenc
 python generate/door_warning_beep.py .
+python generate/low_battery_chirp.py .
 python generate/garage_door_closing.py .
 python generate/scifi_bay_door.py .
 python generate/scifi_bay_alert.py .
