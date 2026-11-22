@@ -21,6 +21,7 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  1.2.1 (2026-11-22) - Low battery reminder can also repeat every 5, 15 or 30 minutes.
  *  1.2.0 (2026-11-22) - Low battery reminder: a notification when the sensor's battery drops below a
  *                       level, then a short chime (or buzzer chirp) every few hours within set hours.
  *                       It never sounds while the door moves; a door warning always takes over.
@@ -32,7 +33,7 @@
 
 import groovy.transform.Field
 
-@Field static final String APP_VERSION = "1.2.0"
+@Field static final String APP_VERSION = "1.2.1"
 @Field static final String CHILD_DRIVER = "Relay Garage Door"
 @Field static final String CHILD_DRIVER_NO_BATTERY = "Relay Garage Door (No Battery)"
 @Field static final String CHILD_NAMESPACE = "Heatvent"
@@ -139,7 +140,7 @@ Map mainPage() {
                         description: "Pick a different sound from the door warning"
                 }
                 input "lowBatteryHours", "enum", title: "Remind every", defaultValue: "4",
-                    options: ["1": "1 hour", "2": "2 hours", "4": "4 hours", "8": "8 hours", "12": "12 hours", "24": "24 hours"]
+                    options: ["5m": "5 minutes", "15m": "15 minutes", "30m": "30 minutes", "1": "1 hour", "2": "2 hours", "4": "4 hours", "8": "8 hours", "12": "12 hours", "24": "24 hours"]
                 input "lowBatteryFrom", "time", title: "Only beep after (optional)", required: false
                 input "lowBatteryTo", "time", title: "Only beep before (optional)", required: false
             }
@@ -216,7 +217,7 @@ void initialize() {
     syncDoor()
     checkBattery()
     // updated() cleared the schedule; keep reminding if the battery is still low.
-    if (state.lowBattery) runIn(((lowBatteryHours ?: "4") as Integer) * 3600, "lowBatteryBeep")
+    if (state.lowBattery) runIn(reminderSeconds(), "lowBatteryBeep")
 }
 
 private void subscribeSensor(dev, String handler) {
@@ -455,8 +456,7 @@ private void clearLowBattery() {
 
 void lowBatteryBeep() {
     if (!state.lowBattery) return
-    Integer hours = ((lowBatteryHours ?: "4") as Integer)
-    runIn(hours * 3600, "lowBatteryBeep")
+    runIn(reminderSeconds(), "lowBatteryBeep")
 
     if (lowBatteryFrom && lowBatteryTo &&
             !timeOfDayIsBetween(toDateTime(lowBatteryFrom), toDateTime(lowBatteryTo), new Date(), location.timeZone)) {
@@ -483,6 +483,12 @@ void lowBatteryBeep() {
         warningSwitch.on()
         runInMillis(400, "endLowBatteryBeep")
     }
+}
+
+/** "5m" / "15m" / "30m" are minutes; plain numbers are hours. */
+private Integer reminderSeconds() {
+    String v = (lowBatteryHours ?: "4").toString()
+    return v.endsWith("m") ? (v[0..-2] as Integer) * 60 : (v as Integer) * 3600
 }
 
 void endLowBatteryBeep() {
