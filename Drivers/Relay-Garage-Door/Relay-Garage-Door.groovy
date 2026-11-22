@@ -4,8 +4,8 @@
  *  Relay Garage Door (device)
  *
  *  The garage door device created by the Relay Garage Door app. It combines a relay
- *  (e.g. Zooz ZEN16 MultiRelay) and a tilt/contact sensor (e.g. Zooz ZSE43 Tilt-Shock XS)
- *  into one device with Garage Door Control, Contact Sensor and Battery.
+ *  (e.g. Zooz ZEN16 MultiRelay) and a tilt, wireless or wired door sensor into one device
+ *  with Garage Door Control, Contact Sensor and Battery.
  *
  *  Exposed through Maker API, the Home Assistant Hubitat integration shows it as a
  *  garage-door cover (open / opening / closing / closed), a contact binary sensor and
@@ -18,12 +18,13 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  1.1.0 (2026-11-22) - Version bump with the app (wired / wireless sensors, warning device).
  *  1.0.0 (2026-11-22) - Initial release.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "1.0.0"
+@Field static final String DRIVER_VERSION = "1.1.0"
 
 metadata {
     definition(
