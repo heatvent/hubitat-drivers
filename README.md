@@ -147,6 +147,7 @@ Hubitat includes a built-in ZSE50 driver (platform 2.4.3+). This Heatvent driver
 | Command | Behavior |
 |---------|----------|
 | `siren` / `on` / `playSound(n)` | Play tone (default = param 4) |
+| `playSound(n, volume)` | Play tone `n` at `volume` % (1–100) for that sound only; `setVolume` stays as it is |
 | `strobe` | LED-only mode (param 1 = 4) then start playback |
 | `both` | Normal playback with LED |
 | `off` / `stop` | Stop tone |
@@ -197,6 +198,8 @@ The device has `GarageDoorControl`, `ContactSensor`, `Battery` and `Refresh`. Wh
 ### Warning before the door moves
 
 Pick a **buzzer or strobe relay** (switched on while warning), a **chime or siren** (any `Chime` device, e.g. the Zooz ZSE50, which plays a sound number), or both. Choose *Closing* or *Opening and closing*, and how many seconds to warn before the opener is pressed (5 is typical). By default the warning lasts until the door stops. An Open or Close during the warning cancels the move before the door starts.
+
+**Volume for the garage sounds** (optional) plays the warning and the low battery reminder at that volume, leaving the chime's own volume for everything else. It needs a chime driver whose `playSound` takes a volume, such as the Zooz ZSE50 driver here (2.3.0+); with other chimes it uses the chime's own volume.
 
 For a ZSE50, [`Sounds/Zooz-ZSE50/door-warning_beep.mp3`](Sounds/Zooz-ZSE50/door-warning_beep.mp3) is a back-up-alarm style beep made for this.
 

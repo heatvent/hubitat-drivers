@@ -21,6 +21,8 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  1.3.0 (2026-11-28) - Chime volume for the garage sounds (door warning and low battery reminder), so
+ *                       they can be quieter or louder than the chime's other sounds.
  *  1.2.1 (2026-11-22) - Low battery reminder can also repeat every 5, 15 or 30 minutes.
  *  1.2.0 (2026-11-22) - Low battery reminder: a notification when the sensor's battery drops below a
  *                       level, then a short chime (or buzzer chirp) every few hours within set hours.
@@ -33,7 +35,7 @@
 
 import groovy.transform.Field
 
-@Field static final String APP_VERSION = "1.2.1"
+@Field static final String APP_VERSION = "1.3.0"
 @Field static final String CHILD_DRIVER = "Relay Garage Door"
 @Field static final String CHILD_DRIVER_NO_BATTERY = "Relay Garage Door (No Battery)"
 @Field static final String CHILD_NAMESPACE = "Heatvent"
@@ -121,6 +123,8 @@ Map mainPage() {
                 submitOnChange: true
             if (warningChime) {
                 input "chimeSound", "number", title: "Sound number to play", defaultValue: 1, required: false
+                input "chimeVolume", "number", title: "Volume for the garage sounds (%)", range: "1..100", required: false,
+                    description: "Blank = the chime's own volume. Used for the warning and the low battery reminder."
             }
             input "warnOn", "enum", title: "Warn when", defaultValue: "close",
                 options: ["close": "Closing", "both": "Opening and closing"]
@@ -475,7 +479,7 @@ void lowBatteryBeep() {
         }
         logDebug "Low battery beep on ${warningChime.displayName}"
         state.batteryBeep = true
-        warningChime.playSound((lowBatterySound as Integer))
+        playChime(lowBatterySound as Integer)
         runIn(3, "endLowBatteryBeep")
     } else if (warningSwitch) {
         logDebug "Low battery chirp on ${warningSwitch.displayName}"
@@ -515,7 +519,20 @@ private void startWarning() {
     state.remove("batteryBeep")
     state.warning = true
     warningSwitch?.on()
-    if (warningChime) warningChime.playSound(((chimeSound ?: 1) as Integer))
+    if (warningChime) playChime((chimeSound ?: 1) as Integer)
+}
+
+/** Plays a chime sound at the garage volume when one is set and the chime's driver takes a volume. */
+private void playChime(Integer sound) {
+    if (chimeVolume) {
+        try {
+            warningChime.playSound(sound, (chimeVolume as Integer))
+            return
+        } catch (e) {
+            logDebug "${warningChime.displayName} doesn't take a volume with playSound; using its own volume"
+        }
+    }
+    warningChime.playSound(sound)
 }
 
 private void stopWarning() {
