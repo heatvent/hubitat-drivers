@@ -11,6 +11,8 @@
  *  Namespace: Heatvent
  *
  *  ---------------------------------------------------------------------------------------------------
+ *  2.3.0 (2026-11-28) - playSound takes an optional volume (1–100) for that one sound; the chime's own
+ *                       volume (setVolume) stays as it is. Uses Sound Switch v2 Tone Play Set.
  *  2.2.1 (2026-11-22) - Fix: power source was reversed (unplugged showed mains, plugged in showed battery).
  *                       "Power applied" also counts as mains. Declares the PowerSource capability.
  *  2.2.0 (2026-11-22) - previewTones: plays every tone (or only custom / stock ones) for a few seconds
@@ -31,7 +33,7 @@
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "2.2.1"
+@Field static final String DRIVER_VERSION = "2.3.0"
 
 // Stock tone names by number, used until the device reports its files.
 @Field static final Map TONE_NAMES = [
@@ -127,7 +129,10 @@ metadata {
         attribute "toneCount", "number"
         attribute "preview", "string"
 
-        command "playSound", [[name: "Tone Number*", type: "NUMBER", description: "Tone file number 1–50", range: "1..50"]]
+        command "playSound", [
+            [name: "Tone Number*", type: "NUMBER", description: "Tone file number 1–50", range: "1..50"],
+            [name: "Volume %", type: "NUMBER", description: "Optional, 1–100, for this sound only (blank = the chime's volume)", range: "1..100"]
+        ]
         command "setVolume", [[name: "Volume %*", type: "NUMBER", description: "0=mute, 1–100", range: "0..100"]]
         command "setLedColor", [[name: "LED Color", type: "ENUM", constraints: ["Red", "Yellow", "Green", "Indigo", "Blue", "Purple", "White"]]]
         command "setDefaultTone", [[name: "Default Tone*", type: "NUMBER", description: "Param 4 tone number 1–50", range: "1..50"]]
@@ -385,21 +390,23 @@ private void sendStopped() {
     sendEvent(name: "status", value: "stopped")
 }
 
-void playSound(toneNumber) {
+void playSound(toneNumber, volume = null) {
     cancelPreview()
-    playTone(clampInt(toInt(toneNumber), 1, 50))
+    Integer v = toInt(volume)
+    playTone(clampInt(toInt(toneNumber), 1, 50), v ? clampInt(v, 1, 100) : null)
 }
 
-private void playTone(Integer t) {
+private void playTone(Integer t, Integer vol = null) {
     if (state.toneInfo && !knownTones().containsKey(t)) logWarn "playSound(${t}): the device has no tone ${t}; trying anyway"
     String name = toneName(t)
-    logInfo "playSound(${t}) -> ${name}"
+    logInfo "playSound(${t}${vol ? ", ${vol}%" : ""}) -> ${name}"
     sendEvent(name: "soundName", value: name)
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "alarm", value: "siren")
     sendEvent(name: "status", value: "playing")
     sendCmds([
-        secure(zwave.soundSwitchV1.tonePlaySet(toneIdentifier: t)),
+        // Sound Switch v2 Tone Play Set (0x79 0x08) carries a volume for this play only.
+        vol ? secure("7908" + hex2(t) + hex2(vol)) : secure(zwave.soundSwitchV1.tonePlaySet(toneIdentifier: t)),
         secure(zwave.switchBinaryV2.switchBinaryGet())
     ])
 }
@@ -751,6 +758,10 @@ private String secure(hubitat.zwave.Command cmd) {
 
 private String secure(String cmd) {
     return zwaveSecureEncap(cmd)
+}
+
+private static String hex2(Integer n) {
+    return String.format("%02X", n & 0xFF)
 }
 
 void logsOff() {
